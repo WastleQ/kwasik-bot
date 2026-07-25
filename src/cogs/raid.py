@@ -1,0 +1,48 @@
+import random
+from twitchio.ext import commands
+from src.data import ITEMS, RAID_BOSSES, SPELLS
+
+class RaidCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+
+    @commands.command(name="рейд")
+    async def cmd_raid(self, ctx, action: str = "", arg2: str = "шар"):
+        user = ctx.author.name.lower()
+        if action == "запустить" and user == "wastle_":
+            if arg2 not in RAID_BOSSES: return
+            boss = RAID_BOSSES[arg2]
+            self.bot.active_raid = {"id": arg2, "hp": boss["hp"], "max_hp": boss["hp"], "parts": {}}
+            await ctx.send(f"⚠️ КРАСНЫЕ ВРАТА: {boss['name']} призван! Пишите !рейд удар или !рейд каст [скилл]")
+            return
+            
+        if action in ["удар", "каст"]:
+            if not getattr(self.bot, "active_raid", None):
+                await ctx.send("❌ Нет активного рейда."); return
+            p, raid = self.bot.get_player(user), self.bot.active_raid
+            
+            is_magic = action == "каст"
+            spell = SPELLS.get(arg2.lower()) if is_magic else None
+            if is_magic and (not spell or p.mp < spell["mp_cost"]):
+                await ctx.send(f"❌ Ошибка магии (мана или имя)"); return
+            if is_magic: p.mp -= spell["mp_cost"]
+            
+            dmg, is_crit = self.bot.engine.calculate_raid_damage(p, len(raid["parts"]) >= 5, is_magic, spell)
+            raid["hp"] -= dmg
+            raid["parts"][p.username] = raid["parts"].get(p.username, 0) + dmg
+            p.hp -= self.bot.engine.raid_boss_retaliation(p, raid["hp"] / raid["max_hp"])
+            
+            if p.hp <= 0:
+                self.bot.engine.handle_death(p)
+                if p.username in raid["parts"]: del raid["parts"][p.username]
+                self.bot.db.save(p)
+                await ctx.send(f"💀 @{p.username} пал в рейде!"); return
+            
+            self.bot.db.save(p)
+            if raid["hp"] <= 0:
+                boss_data = RAID_BOSSES[raid["id"]]
+                await ctx.send(f"🎊 {boss_data['name']} ПОВЕРЖЕН!")
+                # ... (логика распределения наград)
+                self.bot.active_raid = None
+            else:
+                await ctx.send(f"{'🔮' if is_magic else '⚔️'} @{p.username} нанес {dmg}! Босс: {max(0, raid['hp'])} HP")

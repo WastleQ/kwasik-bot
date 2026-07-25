@@ -1,0 +1,3 @@
+twitchio==2.8.0
+dataclasses; python_version < "3.7"
+TOKEN = "oauth:ke5m8avjx01or59xiewzsl4l6ph24k"
