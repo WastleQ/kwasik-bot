@@ -2,6 +2,7 @@
 .env
 wiki.md
 wiki_local.md
+AGENTS.md
 
 # База данных и виртуальное окружение
 *.db

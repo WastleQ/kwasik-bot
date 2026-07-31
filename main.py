@@ -11,7 +11,7 @@ from src.models import DBManager, Player
 
 load_dotenv()
 TOKEN = os.getenv("TWITCH_TOKEN")
-CHANNEL = "akseniyy"
+CHANNEL = "kwasik67"
 ADMINS = ["wastle_", "akseniyy", "kwasik67"]
 
 class SoloLevelingBot(commands.Bot):
