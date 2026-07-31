@@ -24,6 +24,7 @@ class Player:
     last_daily: str = "2000-01-01"
     title: str = "novice"
     achievements: str = ""
+    pvp_wins: int = 0
 
 class DBManager:
     def __init__(self, db_path="solo_leveling.db"):
@@ -36,7 +37,7 @@ class DBManager:
                  str_stat INT, agi INT, vit INT, int_stat INT, sen INT, 
                  hp INT, mp INT, gold INT, location_id TEXT,
                  weapon_id TEXT, armor_id TEXT, accessory_id TEXT, last_daily TEXT,
-                 title TEXT DEFAULT 'novice', achievements TEXT DEFAULT '')''')
+                 title TEXT DEFAULT 'novice', achievements TEXT DEFAULT '', pvp_wins INT DEFAULT 0)''')
             await conn.execute("CREATE TABLE IF NOT EXISTS inventory (username TEXT, item_id TEXT)")
             
             # Migration check for existing databases
@@ -46,6 +47,8 @@ class DBManager:
                     await conn.execute("ALTER TABLE players ADD COLUMN title TEXT DEFAULT 'novice'")
                 if "achievements" not in columns:
                     await conn.execute("ALTER TABLE players ADD COLUMN achievements TEXT DEFAULT ''")
+                if "pvp_wins" not in columns:
+                    await conn.execute("ALTER TABLE players ADD COLUMN pvp_wins INT DEFAULT 0")
             
             await conn.commit()
 
@@ -91,6 +94,16 @@ class DBManager:
             conn.row_factory = aiosqlite.Row
             async with conn.execute(
                 "SELECT * FROM players ORDER BY lvl DESC, exp DESC LIMIT ?", 
+                (limit,)
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return [Player(**dict(r)) for r in rows]
+
+    async def get_top_pvp_players(self, limit=5) -> list[Player]:
+        async with aiosqlite.connect(self.path) as conn:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute(
+                "SELECT * FROM players ORDER BY pvp_wins DESC LIMIT ?", 
                 (limit,)
             ) as cursor:
                 rows = await cursor.fetchall()
