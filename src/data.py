@@ -71,3 +71,16 @@ SPELLS = {
     "шар": {"name": "Огненный шар", "mp_cost": 30, "damage_mult": 5.0},
     "молния": {"name": "Удар молнии", "mp_cost": 50, "damage_mult": 8.0}
 }
+
+ACHIEVEMENTS = {
+    "first_hunt": {"name": "Первая кровь", "desc": "Совершить первую охоту в подземелье", "reward_gold": 100},
+    "hunter_10": {"name": "Опытный охотник", "desc": "Достигнуть 10 уровня", "reward_gold": 500},
+    "boss_slayer": {"name": "Убийца боссов", "desc": "Победить босса в подземелье", "reward_gold": 1000},
+    "pvp_winner": {"name": "Дуэлянт", "desc": "Одержать победу в PvP дуэли", "reward_gold": 300}
+}
+
+TITLES = {
+    "novice": {"name": "Новичок", "bonus_str": 0, "bonus_vit": 0, "req": None},
+    "hunter_e": {"name": "Охотник E-ранга", "bonus_str": 5, "bonus_vit": 5, "req": "hunter_10"},
+    "shadow_monarch": {"name": "Теневой Монарх", "bonus_str": 25, "bonus_agi": 15, "bonus_vit": 20, "req": "boss_slayer"}
+}

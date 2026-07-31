@@ -1,19 +1,18 @@
-import os
 import asyncio
 import importlib
+import os
+
 from dotenv import load_dotenv
 from twitchio.ext import commands, routines
-from src.models import DBManager, Player
-from src.engine import RPGEngine
-from src.data import RAID_BOSSES, ITEMS
 
-import os
-from dotenv import load_dotenv
+from src.data import ITEMS, RAID_BOSSES
+from src.engine import RPGEngine
+from src.models import DBManager, Player
 
 load_dotenv()
 TOKEN = os.getenv("TWITCH_TOKEN")
 CHANNEL = "akseniyy"
-ADMINS = ["wastle_", "akseniyy"]
+ADMINS = ["wastle_", "akseniyy", "kwasik67"]
 
 class SoloLevelingBot(commands.Bot):
     def __init__(self):
@@ -25,6 +24,9 @@ class SoloLevelingBot(commands.Bot):
         self.engine = RPGEngine()
         self.active_duels = {}
         self.active_raid = None
+        self.parties = {}
+        self.party_invites = {}
+        self.player_party = {}
 
         self.load_extensions()
 
@@ -42,6 +44,7 @@ class SoloLevelingBot(commands.Bot):
                         self.add_cog(obj(self))
 
     async def event_ready(self):
+        await self.db.init_db()
         print(f"🔥 Охотник {self.nick} в сети!")
         self.raid_aoe_task.start()
         self.regen_task.start()
@@ -54,35 +57,41 @@ class SoloLevelingBot(commands.Bot):
             return
         print(f"⚠️ Ошибка: {error}")
 
-    def get_player(self, username: str):
+    async def get_player(self, username: str):
         username = username.lower().replace("@", "")
-        p = self.db.load(username)
-        if not p: p = Player(username=username); self.db.save(p)
+        p = await self.db.load(username)
+        if not p:
+            p = Player(username=username)
+            await self.db.save(p)
         return p
 
     @commands.command(name="админ_вещи")
     async def admin_give_all(self, ctx):
         if ctx.author.name.lower() in ADMINS:
-            p = self.get_player(ctx.author.name)
-            for tid in ITEMS: self.db.add_to_inventory(p.username, tid)
+            p = await self.get_player(ctx.author.name)
+            for tid in ITEMS:
+                await self.db.add_to_inventory(p.username, tid)
             await ctx.send("🎁 Склад открыт!")
 
     async def _passive_regen_logic(self):
-        for p in self.db.get_all_players():
+        players = await self.db.get_all_players()
+        for p in players:
             max_hp = self.engine.get_max_hp(p)
             if p.hp < max_hp:
                 p.hp = min(max_hp, p.hp + 1 + int(self.engine.get_stats(p)['vit'] * 0.1))
-                self.db.save(p)
+                await self.db.save(p)
 
     async def _raid_aoe_logic(self):
         if self.active_raid:
             damage = RAID_BOSSES[self.active_raid["id"]].get("aoe_dmg", 10)
             for uname in list(self.active_raid["parts"].keys()):
-                p = self.get_player(uname); p.hp -= damage
+                p = await self.get_player(uname)
+                p.hp -= damage
                 if p.hp <= 0: 
                     self.engine.handle_death(p)
-                    del self.active_raid["parts"][p.username]
-                self.db.save(p)
+                    if p.username in self.active_raid["parts"]:
+                        del self.active_raid["parts"][p.username]
+                await self.db.save(p)
 
 if __name__ == "__main__":
     SoloLevelingBot().run()

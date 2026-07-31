@@ -1,5 +1,7 @@
 from twitchio.ext import commands
-from src.data import SPELLS  # Импортируем справочник заклинаний
+
+from src.data import ACHIEVEMENTS, SPELLS, TITLES
+
 
 class InfoCog(commands.Cog):
     def __init__(self, bot):
@@ -7,15 +9,59 @@ class InfoCog(commands.Cog):
 
     @commands.command(name="команды")
     async def cmd_help(self, ctx):
-        # Добавил !заклинания в список
-        await ctx.send("📜 Доступные команды: !статы !кач !квест !охота !заклинания !инвентарь !надеть !снять !пить !магазин !купить !врата !переход !дуэль !принять !рейд !топ")
+        await ctx.send("📜 Доступные команды: !статы !кач !квест !охота !заклинания !достижения !титулы !титул !инвентарь !надеть !снять !пить !магазин !купить !передать !пати !врата !переход !дуэль !принять !рейд !топ")
 
     @commands.command(name="статы")
     async def cmd_stats(self, ctx):
-        p = self.bot.get_player(ctx.author.name)
+        p = await self.bot.get_player(ctx.author.name)
         st = self.bot.engine.get_stats(p)
         rank = self.bot.engine.get_rank(p.lvl)
-        await ctx.send(f"@{p.username} [{rank}] | HP: {p.hp}/{self.bot.engine.get_max_hp(p)} | MP: {p.mp}/{self.bot.engine.get_max_mp(p)} | {p.gold} 💰 | AP: {p.stat_points} | STR {st['str']} AGI {st['agi']} VIT {st['vit']} INT {st['int']}")
+        title_name = TITLES.get(p.title, {}).get("name", "Новичок")
+        await ctx.send(f"@{p.username} [{rank}] | Титул: {title_name} | HP: {p.hp}/{self.bot.engine.get_max_hp(p)} | MP: {p.mp}/{self.bot.engine.get_max_mp(p)} | {p.gold} 💰 | AP: {p.stat_points} | STR {st['str']} AGI {st['agi']} VIT {st['vit']} INT {st['int']}")
+
+    @commands.command(name="достижения")
+    async def cmd_achievements(self, ctx):
+        p = await self.bot.get_player(ctx.author.name)
+        unlocked = [a.strip() for a in p.achievements.split(",") if a.strip()]
+        if not unlocked:
+            await ctx.send(f"🏆 @{p.username}, у тебя пока нет разблокированных достижений.")
+            return
+        
+        ach_names = [ACHIEVEMENTS[a]["name"] for a in unlocked if a in ACHIEVEMENTS]
+        await ctx.send(f"🏆 Достижения @{p.username}: " + ", ".join(ach_names))
+
+    @commands.command(name="титулы")
+    async def cmd_titles(self, ctx):
+        p = await self.bot.get_player(ctx.author.name)
+        unlocked_ach = [a.strip() for a in p.achievements.split(",") if a.strip()]
+        
+        lines = []
+        for key, t in TITLES.items():
+            req = t.get("req")
+            is_unlocked = req is None or req in unlocked_ach
+            status = "🔓 Доступен" if is_unlocked else f"🔒 Требуется: {ACHIEVEMENTS.get(req, {}).get('name', req)}"
+            active_mark = " (Активен)" if p.title == key else ""
+            lines.append(f"{t['name']} [{key}]{active_mark}: {status}")
+            
+        await ctx.send("👑 Доступные титулы: " + " | ".join(lines))
+
+    @commands.command(name="титул")
+    async def cmd_set_title(self, ctx, title_key: str = ""):
+        title_key = title_key.lower().strip()
+        if not title_key or title_key not in TITLES:
+            await ctx.send("❌ Укажите корректный ключ титула. Посмотрите !титулы"); return
+            
+        p = await self.bot.get_player(ctx.author.name)
+        t_data = TITLES[title_key]
+        req = t_data.get("req")
+        unlocked_ach = [a.strip() for a in p.achievements.split(",") if a.strip()]
+        
+        if req is not None and req not in unlocked_ach:
+            await ctx.send(f"❌ Этот титул заблокирован! Требуется достижение: {ACHIEVEMENTS.get(req, {}).get('name', req)}"); return
+            
+        p.title = title_key
+        await self.bot.db.save(p)
+        await ctx.send(f"👑 @{p.username} сменил титул на: {t_data['name']}!")
 
     @commands.command(name="заклинания")
     async def cmd_spells(self, ctx):
@@ -26,7 +72,6 @@ class InfoCog(commands.Cog):
         msg = "🔮 Доступные заклинания: "
         spells_info = []
         for key, s in SPELLS.items():
-            # Показываем название, ключ для ввода, стоимость и множитель
             spells_info.append(f"{s['name']} [{key}]: {s['mp_cost']}MP (x{s['damage_mult']})")
         
         msg += " | ".join(spells_info)
@@ -35,7 +80,7 @@ class InfoCog(commands.Cog):
 
     @commands.command(name="топ")
     async def cmd_top(self, ctx):
-        top_players = self.bot.db.get_top_players(5)
+        top_players = await self.bot.db.get_top_players(5)
         if not top_players:
             await ctx.send("🏆 Таблица лидеров пока пуста.")
             return

@@ -1,12 +1,14 @@
-import random
 import math
-from src.data import ITEMS
+import random
+
+from src.data import ACHIEVEMENTS, ITEMS, TITLES
+
 
 class RPGEngine:
     @staticmethod
     def get_stats(p):
         res = {"str": p.str_stat, "vit": p.vit, "agi": p.agi, "sen": p.sen, "int": p.int_stat}
-        # Собираем статы со всех 3-х слотов
+        # Собираем статы со всех 3-х слотов снаряжения
         for i_id in [p.weapon_id, p.armor_id, p.accessory_id]:
             if i_id and i_id in ITEMS:
                 item = ITEMS[i_id]
@@ -15,6 +17,16 @@ class RPGEngine:
                 res["agi"] += item.get("bonus_agi", 0)
                 res["int"] += item.get("bonus_int", 0)
                 res["sen"] += item.get("bonus_sen", 0)
+        
+        # Бонусы от активного титула
+        if p.title in TITLES:
+            t_data = TITLES[p.title]
+            res["str"] += t_data.get("bonus_str", 0)
+            res["vit"] += t_data.get("bonus_vit", 0)
+            res["agi"] += t_data.get("bonus_agi", 0)
+            res["int"] += t_data.get("bonus_int", 0)
+            res["sen"] += t_data.get("bonus_sen", 0)
+
         return res
 
     def get_max_hp(self, p): return 100 + (self.get_stats(p)["vit"] * 15)
@@ -40,6 +52,19 @@ class RPGEngine:
             p.mp = self.get_max_mp(p)
             up = True
         return up
+
+    @staticmethod
+    def unlock_achievement(p, ach_id):
+        if ach_id not in ACHIEVEMENTS:
+            return None
+        unlocked = [a.strip() for a in p.achievements.split(",") if a.strip()]
+        if ach_id not in unlocked:
+            unlocked.append(ach_id)
+            p.achievements = ",".join(unlocked)
+            ach = ACHIEVEMENTS[ach_id]
+            p.gold += ach.get("reward_gold", 0)
+            return ach
+        return None
 
     def fight(self, p, dungeon, is_magic=False, spell=None):
         st = self.get_stats(p)
@@ -73,14 +98,30 @@ class RPGEngine:
         p.exp += mob_exp
         p.gold += random.randint(30, 70) if is_boss else random.randint(10, 30)
         
+        # Проверяем достижения за охоту и боссов
+        ach_msg = ""
+        ach1 = self.unlock_achievement(p, "first_hunt")
+        if ach1:
+            ach_msg += f" 🏆 Достижение: [{ach1['name']}] (+{ach1['reward_gold']}💰)!"
+        
+        if is_boss:
+            ach2 = self.unlock_achievement(p, "boss_slayer")
+            if ach2:
+                ach_msg += f" 🏆 Достижение: [{ach2['name']}] (+{ach2['reward_gold']}💰)!"
+
+        if p.lvl >= 10:
+            ach3 = self.unlock_achievement(p, "hunter_10")
+            if ach3:
+                ach_msg += f" 🏆 Достижение: [{ach3['name']}] (+{ach3['reward_gold']}💰)!"
+
         # Шанс дропа (Босс или Обычный)
         drop = None
-        if is_boss and dungeon.get("boss_drop"):
-            if random.random() < 0.15: drop = dungeon["boss_drop"]
-        elif not is_boss and dungeon.get("mob_drop"):
-            if random.random() < 0.05: drop = dungeon["mob_drop"]
+        if is_boss and dungeon.get("boss_drop") and random.random() < 0.15:
+            drop = dungeon["boss_drop"]
+        elif not is_boss and dungeon.get("mob_drop") and random.random() < 0.05:
+            drop = dungeon["mob_drop"]
             
-        return f"⚔️ Победа над {mob_name}! +{mob_exp} EXP." + (" ✨ LVL UP!" if self.check_level_up(p) else ""), drop
+        return f"⚔️ Победа над {mob_name}! +{mob_exp} EXP.{ach_msg}" + (" ✨ LVL UP!" if self.check_level_up(p) else ""), drop
 
     def calculate_raid_damage(self, p, has_buff, is_magic, spell):
         st = self.get_stats(p)
