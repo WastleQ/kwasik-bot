@@ -76,6 +76,22 @@ class RPGEngine:
             return ach
         return None
 
+    @staticmethod
+    def get_crystal_drop(location_id, is_boss=False):
+        mapping = {
+            "1": "crystal_e",
+            "2": "crystal_d",
+            "3": "crystal_c",
+            "4": "crystal_b",
+            "5": "crystal_a",
+            "6": "crystal_s",
+        }
+        c_id = mapping.get(str(location_id))
+        if not c_id:
+            return None
+        chance = 0.50 if is_boss else 0.25
+        return c_id if random.random() < chance else None
+
     def fight(self, p, dungeon, is_magic=False, spell=None):
         st = self.get_stats(p)
         mob_data = random.choice(dungeon["mobs"])
@@ -148,11 +164,15 @@ class RPGEngine:
                 )
 
         # Шанс дропа (Босс или Обычный)
-        drop = None
+        drops = []
         if is_boss and dungeon.get("boss_drop") and random.random() < 0.15:
-            drop = dungeon["boss_drop"]
+            drops.append(dungeon["boss_drop"])
         elif not is_boss and dungeon.get("mob_drop") and random.random() < 0.05:
-            drop = dungeon["mob_drop"]
+            drops.append(dungeon["mob_drop"])
+
+        c_drop = self.get_crystal_drop(p.location_id, is_boss)
+        if c_drop:
+            drops.append(c_drop)
 
         crit_str = (
             " 🔥 КРИТИЧЕСКИЙ УДАР МАГИИ!"
@@ -167,7 +187,7 @@ class RPGEngine:
         )
         return f"⚔️ Победа над {mob_name}! +{mob_exp} EXP.{crit_str}{ach_msg}" + (
             " ✨ LVL UP!" if self.check_level_up(p) else ""
-        ), drop
+        ), drops
 
     def calculate_raid_damage(self, p, has_buff, is_magic, spell):
         st = self.get_stats(p)

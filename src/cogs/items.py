@@ -1,6 +1,6 @@
 from twitchio.ext import commands
 
-from src.data import ITEMS
+from src.data import CRAFTING_RECIPES, ITEMS
 
 
 class ItemsCog(commands.Cog):
@@ -92,6 +92,51 @@ class ItemsCog(commands.Cog):
         await self.bot.db.add_to_inventory(p.username, tid)
         await self.bot.db.save(p)
         await ctx.send(f"✅ Куплено: {ITEMS[tid]['name']}!")
+
+    @commands.command(name="крафты")
+    async def cmd_crafts(self, ctx):
+        recipes_info = []
+        for r_key, r in CRAFTING_RECIPES.items():
+            reqs = ", ".join(
+                [f"{count}x {ITEMS[mat]['name']}" for mat, count in r["req"].items()]
+            )
+            recipes_info.append(
+                f"{r['name']} [{r_key}]: Требует [{reqs}] ({r['desc']})"
+            )
+        await ctx.send("⚒️ Доступные рецепты крафта: " + " | ".join(recipes_info))
+
+    @commands.command(name="крафт")
+    async def cmd_craft(self, ctx, *, name: str = ""):
+        name = name.lower().strip()
+        recipe = CRAFTING_RECIPES.get(name) or next(
+            (r for r in CRAFTING_RECIPES.values() if name in r["name"].lower()),
+            None,
+        )
+        if not recipe:
+            await ctx.send("❌ Рецепт не найден. Посмотрите !крафты")
+            return
+
+        p = await self.bot.get_player(ctx.author.name)
+        inv = await self.bot.db.get_inventory(p.username)
+
+        inv_counts = {}
+        for i in inv:
+            inv_counts[i] = inv_counts.get(i, 0) + 1
+
+        for mat, count in recipe["req"].items():
+            if inv_counts.get(mat, 0) < count:
+                await ctx.send(
+                    f"❌ Недостаточно ингредиентов! Нужно {count}x {ITEMS[mat]['name']}"
+                )
+                return
+
+        for mat, count in recipe["req"].items():
+            for _ in range(count):
+                await self.bot.db.remove_from_inventory(p.username, mat)
+
+        await self.bot.db.add_to_inventory(p.username, recipe["key"])
+        await self.bot.db.save(p)
+        await ctx.send(f"✨ @{p.username} успешно скрафтил [{recipe['name']}]!")
 
     @commands.command(name="продать")
     async def cmd_sell(self, ctx, *, name: str = ""):

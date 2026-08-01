@@ -77,13 +77,30 @@ class GameplayCog(commands.Cog):
                 return
             p.mp -= spell["mp_cost"]
 
-        msg, drop = self.bot.engine.fight(p, DUNGEONS[p.location_id], is_magic, spell)
-        if drop:
-            await self.bot.db.add_to_inventory(p.username, drop)
-            msg += f" 💎 Находка: {ITEMS[drop]['name']}!"
+        msg, drops = self.bot.engine.fight(p, DUNGEONS[p.location_id], is_magic, spell)
+        if drops:
+            for drop in drops:
+                await self.bot.db.add_to_inventory(p.username, drop)
+                msg += f" 💎 Находка: {ITEMS[drop]['name']}!"
 
         await self.bot.db.save(p)
         await ctx.send(msg)
+
+    @commands.command(name="войти")
+    async def cmd_enter_gate(self, ctx):
+        if not getattr(self.bot, "active_red_gate", None):
+            await ctx.send("❌ Сейчас нет открытых Скрытых / Красных Врат!")
+            return
+        gate = self.bot.active_red_gate
+        uname = ctx.author.name.lower()
+        if uname in gate["participants"]:
+            await ctx.send(f"🛡️ @{ctx.author.name}, ты уже вошел во врата!")
+            return
+        p = await self.bot.get_player(uname)
+        gate["participants"][uname] = p
+        await ctx.send(
+            f"⚔️ @{ctx.author.name} вошел в Красные Врата! Участников: {len(gate['participants'])}"
+        )
 
     @commands.command(name="кач")
     async def cmd_upgrade(self, ctx, stat: str = "", count: int = 1):

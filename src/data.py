@@ -118,6 +118,45 @@ ITEMS = {
         "bonus_int": 5,
         "price": 0,
     },
+    # Магические Кристаллы (материалы)
+    "crystal_e": {"name": "Кристалл E-ранга", "type": "material", "price": 50},
+    "crystal_d": {"name": "Кристалл D-ранга", "type": "material", "price": 100},
+    "crystal_c": {"name": "Кристалл C-ранга", "type": "material", "price": 250},
+    "crystal_b": {"name": "Кристалл B-ранга", "type": "material", "price": 500},
+    "crystal_a": {"name": "Кристалл A-ранга", "type": "material", "price": 1000},
+    "crystal_s": {"name": "Кристалл S-ранга", "type": "material", "price": 2500},
+    # Создаваемые предметы (крафт)
+    "shadow_dagger": {
+        "name": "Кинжал Тени",
+        "type": "weapon",
+        "slot": "weapon",
+        "bonus_str": 35,
+        "bonus_agi": 10,
+        "price": 0,
+    },
+    "monarch_ring": {
+        "name": "Перстень Монарха",
+        "type": "weapon",
+        "slot": "accessory",
+        "bonus_str": 20,
+        "bonus_vit": 15,
+        "bonus_int": 10,
+        "price": 0,
+    },
+    "dragon_blade": {
+        "name": "Клинок Дракона",
+        "type": "weapon",
+        "slot": "weapon",
+        "bonus_str": 65,
+        "bonus_agi": 20,
+        "price": 0,
+    },
+    "elixir_of_life": {
+        "name": "Эликсир Жизни",
+        "type": "use",
+        "heal": 1000,
+        "price": 0,
+    },
 }
 
 DUNGEONS = {
@@ -260,5 +299,32 @@ TITLES = {
         "bonus_agi": 15,
         "bonus_vit": 20,
         "req": "boss_slayer",
+    },
+}
+
+CRAFTING_RECIPES = {
+    "shadow_dagger": {
+        "key": "shadow_dagger",
+        "name": "Кинжал Тени",
+        "req": {"crystal_b": 5, "kasaka_dagger": 1},
+        "desc": "+35 STR, +10 AGI",
+    },
+    "monarch_ring": {
+        "key": "monarch_ring",
+        "name": "Перстень Монарха",
+        "req": {"crystal_s": 3, "ring_of_power": 1},
+        "desc": "+20 STR, +15 VIT, +10 INT",
+    },
+    "dragon_blade": {
+        "key": "dragon_blade",
+        "name": "Клинок Дракона",
+        "req": {"crystal_s": 5, "igris_sword": 1},
+        "desc": "+65 STR, +20 AGI",
+    },
+    "elixir_of_life": {
+        "key": "elixir_of_life",
+        "name": "Эликсир Жизни",
+        "req": {"crystal_c": 3, "greater_hp_potion": 2},
+        "desc": "Восстанавливает 1000 HP",
     },
 }

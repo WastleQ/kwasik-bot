@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 import os
+import random
 
 from dotenv import load_dotenv
 from twitchio.ext import commands, routines
@@ -27,6 +28,7 @@ class SoloLevelingBot(commands.Bot):
         self.engine = RPGEngine()
         self.active_duels = {}
         self.active_raid = None
+        self.active_red_gate = None
         self.parties = {}
         self.party_invites = {}
         self.player_party = {}
@@ -35,6 +37,7 @@ class SoloLevelingBot(commands.Bot):
 
         self.raid_aoe_task = routines.routine(minutes=5)(self._raid_aoe_logic)
         self.regen_task = routines.routine(minutes=3)(self._passive_regen_logic)
+        self.red_gate_task = routines.routine(minutes=45)(self._red_gate_spawn_logic)
 
     def load_extensions(self):
         cogs_dir = os.path.join("src", "cogs")
@@ -55,6 +58,69 @@ class SoloLevelingBot(commands.Bot):
         print(f"🔥 Охотник {self.nick} в сети!")
         self.raid_aoe_task.start()
         self.regen_task.start()
+        self.red_gate_task.start()
+
+    @commands.command(name="врата_спавн")
+    async def admin_spawn_red_gate(self, ctx):
+        if ctx.author.name.lower() in ADMINS:
+            await self._spawn_red_gate()
+            await ctx.send("🚨 Красные Врата принудительно открыты!")
+
+    async def _red_gate_spawn_logic(self):
+        if random.random() < 0.5:
+            await self._spawn_red_gate()
+
+    async def _spawn_red_gate(self):
+        channel = self.get_channel(CHANNEL)
+        if not channel:
+            return
+        self.active_red_gate = {
+            "hp": 100000,
+            "max_hp": 100000,
+            "participants": {},
+        }
+        await channel.send(
+            "🚨 КРАСНЫЕ ВРАТА S-РАНГА ОТКРЫЛИСЬ! У вас есть 3 минуты, чтобы войти командой: !войти"
+        )
+        await asyncio.sleep(180)
+        if not self.active_red_gate:
+            return
+
+        gate = self.active_red_gate
+        self.active_red_gate = None
+
+        participants = gate["participants"]
+        if not participants:
+            await channel.send(
+                "💀 Красные Врата закрылись, так как ни один охотник не осмелился войти..."
+            )
+            return
+
+        total_damage = 0
+        for p in participants.values():
+            st = self.engine.get_stats(p)
+            dmg = int(st["str"] * 3.0 + st["int"] * 2.5 + p.lvl * 50)
+            total_damage += dmg
+
+        if total_damage >= 100000:
+            reward_gold = 2000
+            crystals = ["crystal_a", "crystal_s"]
+            rewards_msg = f"🎊 Красные Врата зачищены! Совместный урон: {total_damage}/100000. Награды участникам: {reward_gold}💰 и редкие кристаллы (A/S)!"
+            for p in participants.values():
+                p.gold += reward_gold
+                c_drop = random.choice(crystals)
+                await self.db.add_to_inventory(p.username, c_drop)
+                p.exp += 1500
+                self.engine.check_level_up(p)
+                await self.db.save(p)
+            await channel.send(rewards_msg)
+        else:
+            for p in participants.values():
+                p.hp = max(1, p.hp // 2)
+                await self.db.save(p)
+            await channel.send(
+                f"💀 Охотники проиграли битву в Красных Вратах (урон: {total_damage}/100000)! Босс сокрушил отряд."
+            )
 
     async def event_message(self, message):
         if not message.echo:
