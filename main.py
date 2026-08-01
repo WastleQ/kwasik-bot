@@ -29,6 +29,8 @@ class SoloLevelingBot(commands.Bot):
         self.active_duels = {}
         self.active_raid = None
         self.active_red_gate = None
+        self.active_pvp_matches = {}
+        self.user_active_pvp = {}
         self.parties = {}
         self.party_invites = {}
         self.player_party = {}

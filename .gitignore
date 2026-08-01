@@ -3,6 +3,7 @@
 wiki.md
 wiki_local.md
 AGENTS.md
+admin_commands.md
 
 # База данных и виртуальное окружение
 *.db
