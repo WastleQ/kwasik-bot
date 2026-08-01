@@ -232,7 +232,10 @@ class PvPCog(commands.Cog):
                         f"🔮 @{attacker.username} обрушил [{spell['name']}] на @{defender.username} за {dmg}{crit_str} урона"
                     )
 
-        if s1["agi"] >= s2["agi"]:
+        init1 = (s1["agi"] * 1.0) + (s1["sen"] * 0.8) + random.randint(0, 5)
+        init2 = (s2["agi"] * 1.0) + (s2["sen"] * 0.8) + random.randint(0, 5)
+
+        if init1 >= init2:
             await execute_action(p1, p2, act1, True)
             if p2.hp > 0:
                 await execute_action(p2, p1, act2, False)
