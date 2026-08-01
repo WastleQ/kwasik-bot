@@ -18,19 +18,27 @@ class PartyCog(commands.Cog):
             # Показать статус пати
             leader = self.bot.player_party.get(user)
             if not leader:
-                await ctx.send(f"👥 @{ctx.author.name}, ты не состоишь в группе. Используй: !пати создать")
+                await ctx.send(
+                    f"👥 @{ctx.author.name}, ты не состоишь в группе. Используй: !пати создать"
+                )
                 return
             members = self.bot.parties.get(leader, [])
-            await ctx.send(f"👥 Группа лидера @{leader}: " + ", ".join([f"@{m}" for m in members]))
+            await ctx.send(
+                f"👥 Группа лидера @{leader}: " + ", ".join([f"@{m}" for m in members])
+            )
             return
 
         if action == "создать":
             if self.bot.player_party.get(user):
-                await ctx.send("❌ Ты уже состоишь в группе. Сначала покинь текущую (!пати покинуть).")
+                await ctx.send(
+                    "❌ Ты уже состоишь в группе. Сначала покинь текущую (!пати покинуть)."
+                )
                 return
             self.bot.parties[user] = [user]
             self.bot.player_party[user] = user
-            await ctx.send(f"⚔️ @{ctx.author.name} создал группу! Приглашай бойцов: !пати инвайт @юзер")
+            await ctx.send(
+                f"⚔️ @{ctx.author.name} создал группу! Приглашай бойцов: !пати инвайт @юзер"
+            )
 
         elif action == "инвайт":
             leader = self.bot.player_party.get(user)
@@ -45,7 +53,9 @@ class PartyCog(commands.Cog):
                 await ctx.send(f"❌ @{target} уже состоит в другой группе.")
                 return
             self.bot.party_invites[target] = leader
-            await ctx.send(f"📩 @{target}, приглашение в пати от @{user}! Напиши !пати принять")
+            await ctx.send(
+                f"📩 @{target}, приглашение в пати от @{user}! Напиши !пати принять"
+            )
 
         elif action == "принять":
             leader = self.bot.party_invites.pop(user, None)
@@ -64,7 +74,7 @@ class PartyCog(commands.Cog):
             if not leader:
                 await ctx.send("❌ Ты не в группе.")
                 return
-            
+
             members = self.bot.parties.get(leader, [])
             if user in members:
                 members.remove(user)
@@ -95,14 +105,16 @@ class PartyCog(commands.Cog):
                 p = await self.bot.get_player(m)
                 p.location_id = loc_id
                 await self.bot.db.save(p)
-            await ctx.send(f"🚀 Группа @{leader} переместилась во врата: {DUNGEONS[loc_id]['name']}")
+            await ctx.send(
+                f"🚀 Группа @{leader} переместилась во врата: {DUNGEONS[loc_id]['name']}"
+            )
 
         elif action == "охота":
             leader = self.bot.player_party.get(user)
             if not leader or leader != user:
                 await ctx.send("❌ Только лидер группы может начать совместную охоту.")
                 return
-            
+
             members = self.bot.parties.get(leader, [])
             if not members:
                 await ctx.send("❌ Группа пуста.")
@@ -112,7 +124,9 @@ class PartyCog(commands.Cog):
             p_lead = await self.bot.get_player(members[0])
             loc_id = p_lead.location_id
             if loc_id == "0":
-                await ctx.send("🏘️ Группа в городе. Лидер должен выбрать врата: !пати ход [ID]")
+                await ctx.send(
+                    "🏘️ Группа в городе. Лидер должен выбрать врата: !пати ход [ID]"
+                )
                 return
 
             dungeon = DUNGEONS[loc_id]
@@ -132,7 +146,11 @@ class PartyCog(commands.Cog):
                 alive_players.append(p)
                 st = self.bot.engine.get_stats(p)
                 m_mult = 2.0 if p.accessory_id == "orb_of_avarice" else 1.0
-                p_dmg = max(1, int(st["str"] * 2.0 + st["agi"] * 0.5 + st["int"] * 0.5) * int(m_mult))
+                p_dmg = max(
+                    1,
+                    int(st["str"] * 2.0 + st["agi"] * 0.5 + st["int"] * 0.5)
+                    * int(m_mult),
+                )
                 total_party_dmg += p_dmg
 
             if not alive_players:
@@ -143,7 +161,7 @@ class PartyCog(commands.Cog):
                 # Победа группы
                 exp_reward = int((mob_hp * 0.5) / len(alive_players))
                 gold_reward = int((70 if is_boss else 30) / len(alive_players))
-                
+
                 drop = None
                 if is_boss and dungeon.get("boss_drop") and random.random() < 0.25:
                     drop = dungeon["boss_drop"]
@@ -172,6 +190,10 @@ class PartyCog(commands.Cog):
                     if p.hp <= 0:
                         self.bot.engine.handle_death(p)
                     await self.bot.db.save(p)
-                await ctx.send(f"⚔️ Бой с {mob_name} продолжается! Группа нанесла {total_party_dmg} урона (нужно {mob_hp}). Монстр контратаковал!")
+                await ctx.send(
+                    f"⚔️ Бой с {mob_name} продолжается! Группа нанесла {total_party_dmg} урона (нужно {mob_hp}). Монстр контратаковал!"
+                )
         else:
-            await ctx.send("❌ Команды пати: !пати [создать|инвайт|принять|покинуть|ход|охота]")
+            await ctx.send(
+                "❌ Команды пати: !пати [создать|инвайт|принять|покинуть|ход|охота]"
+            )

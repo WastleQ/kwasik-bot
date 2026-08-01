@@ -11,7 +11,8 @@ class ItemsCog(commands.Cog):
     async def cmd_inv(self, ctx):
         it = await self.bot.db.get_inventory(ctx.author.name)
         if not it:
-            await ctx.send(f"🎒 @{ctx.author.name}, инвентарь пуст."); return
+            await ctx.send(f"🎒 @{ctx.author.name}, инвентарь пуст.")
+            return
         counts = {}
         for tid in it:
             if tid in ITEMS:
@@ -25,17 +26,22 @@ class ItemsCog(commands.Cog):
         p = await self.bot.get_player(ctx.author.name)
         inv = await self.bot.db.get_inventory(p.username)
         tid = next((k for k in inv if name.lower() in ITEMS[k]["name"].lower()), None)
-        
+
         if not tid:
-            await ctx.send("❌ Предмет не найден."); return
-            
+            await ctx.send("❌ Предмет не найден.")
+            return
+
         slot = ITEMS[tid].get("slot")
-        if slot == "weapon": p.weapon_id = tid
-        elif slot == "armor": p.armor_id = tid
-        elif slot == "accessory": p.accessory_id = tid
+        if slot == "weapon":
+            p.weapon_id = tid
+        elif slot == "armor":
+            p.armor_id = tid
+        elif slot == "accessory":
+            p.accessory_id = tid
         else:
-            await ctx.send("❌ Этот предмет нельзя надеть."); return
-            
+            await ctx.send("❌ Этот предмет нельзя надеть.")
+            return
+
         await self.bot.db.save(p)
         await ctx.send(f"✅ @{p.username} экипировал {ITEMS[tid]['name']} ({slot})")
 
@@ -43,55 +49,110 @@ class ItemsCog(commands.Cog):
     async def cmd_unequip(self, ctx, slot: str = ""):
         p = await self.bot.get_player(ctx.author.name)
         s = slot.lower()
-        if s in ["оружие", "weapon"]: p.weapon_id = None
-        elif s in ["броня", "armor"]: p.armor_id = None
-        elif s in ["аксессуар", "сфера", "accessory"]: p.accessory_id = None
+        if s in ["оружие", "weapon"]:
+            p.weapon_id = None
+        elif s in ["броня", "armor"]:
+            p.armor_id = None
+        elif s in ["аксессуар", "сфера", "accessory"]:
+            p.accessory_id = None
         else:
-            await ctx.send("❌ Укажите слот: оружие, броня или аксессуар."); return
+            await ctx.send("❌ Укажите слот: оружие, броня или аксессуар.")
+            return
         await self.bot.db.save(p)
         await ctx.send(f"✅ Слот {slot} теперь пуст.")
 
     @commands.command(name="магазин")
     async def cmd_shop(self, ctx):
-        stock = [f"{i['name']} ({i['price']}💰)" for i in ITEMS.values() if i.get("price", 0) > 0]
+        stock = [
+            f"{i['name']} ({i['price']}💰)"
+            for i in ITEMS.values()
+            if i.get("price", 0) > 0
+        ]
         await ctx.send("🏪 Магазин: " + " | ".join(stock))
 
     @commands.command(name="купить")
     async def cmd_buy(self, ctx, *, name: str = ""):
         p = await self.bot.get_player(ctx.author.name)
-        tid = next((k for k, v in ITEMS.items() if name.lower() in v["name"].lower() and v.get("price", 0) > 0), None)
+        tid = next(
+            (
+                k
+                for k, v in ITEMS.items()
+                if name.lower() in v["name"].lower() and v.get("price", 0) > 0
+            ),
+            None,
+        )
         if not tid:
-            await ctx.send("❌ Товар не найден."); return
+            await ctx.send("❌ Товар не найден.")
+            return
         price = ITEMS[tid]["price"]
         if p.gold < price:
-            await ctx.send("❌ Недостаточно золота."); return
+            await ctx.send("❌ Недостаточно золота.")
+            return
         p.gold -= price
         await self.bot.db.add_to_inventory(p.username, tid)
         await self.bot.db.save(p)
         await ctx.send(f"✅ Куплено: {ITEMS[tid]['name']}!")
 
+    @commands.command(name="продать")
+    async def cmd_sell(self, ctx, *, name: str = ""):
+        p = await self.bot.get_player(ctx.author.name)
+        inv = await self.bot.db.get_inventory(p.username)
+        tid = next(
+            (
+                k
+                for k in inv
+                if name.lower() in ITEMS[k]["name"].lower()
+                and ITEMS[k].get("price", 0) > 0
+            ),
+            None,
+        )
+        if not tid:
+            await ctx.send("❌ Предмет не найден в инвентаре или его нельзя продать.")
+            return
+        item = ITEMS[tid]
+        sell_price = item["price"] // 2
+        p.gold += sell_price
+        await self.bot.db.remove_from_inventory(p.username, tid)
+        await self.bot.db.save(p)
+        await ctx.send(f"💰 @{p.username} продал {item['name']} за {sell_price}💰!")
+
     @commands.command(name="пить", aliases=["использовать"])
     async def cmd_use(self, ctx, *, name: str = ""):
         p = await self.bot.get_player(ctx.author.name)
         inv = await self.bot.db.get_inventory(p.username)
-        tid = next((k for k in inv if name.lower() in ITEMS[k]["name"].lower() and ITEMS[k]["type"] == "use"), None)
+        tid = next(
+            (
+                k
+                for k in inv
+                if name.lower() in ITEMS[k]["name"].lower()
+                and ITEMS[k]["type"] == "use"
+            ),
+            None,
+        )
         if not tid:
-            await ctx.send("❌ Зелье не найдено."); return
+            await ctx.send("❌ Зелье не найдено.")
+            return
         item = ITEMS[tid]
-        if "heal" in item: p.hp = min(self.bot.engine.get_max_hp(p), p.hp + item["heal"])
-        if "restore_mp" in item: p.mp = min(self.bot.engine.get_max_mp(p), p.mp + item["restore_mp"])
+        if "heal" in item:
+            p.hp = min(self.bot.engine.get_max_hp(p), p.hp + item["heal"])
+        if "restore_mp" in item:
+            p.mp = min(self.bot.engine.get_max_mp(p), p.mp + item["restore_mp"])
         await self.bot.db.remove_from_inventory(p.username, tid)
         await self.bot.db.save(p)
         await ctx.send(f"🧪 @{p.username} использовал {item['name']}!")
 
     @commands.command(name="передать")
-    async def cmd_give(self, ctx, category: str = "", target: str = "", *, arg: str = ""):
+    async def cmd_give(
+        self, ctx, category: str = "", target: str = "", *, arg: str = ""
+    ):
         category = category.lower()
         target_name = target.strip("@").lower()
         sender_name = ctx.author.name.lower()
 
         if not category or not target_name:
-            await ctx.send("❌ Формат: !передать золото @юзер <сумма> ИЛИ !передать предмет @юзер <название>")
+            await ctx.send(
+                "❌ Формат: !передать золото @юзер <сумма> ИЛИ !передать предмет @юзер <название>"
+            )
             return
 
         if target_name == sender_name:
@@ -113,7 +174,9 @@ class ItemsCog(commands.Cog):
                 return
 
             if sender_p.gold < amount:
-                await ctx.send(f"❌ У тебя недостаточно золота. В наличии: {sender_p.gold}💰")
+                await ctx.send(
+                    f"❌ У тебя недостаточно золота. В наличии: {sender_p.gold}💰"
+                )
                 return
 
             sender_p.gold -= amount
@@ -121,7 +184,9 @@ class ItemsCog(commands.Cog):
 
             await self.bot.db.save(sender_p)
             await self.bot.db.save(target_p)
-            await ctx.send(f"🤝 @{sender_p.username} передал @{target_p.username} {amount}💰!")
+            await ctx.send(
+                f"🤝 @{sender_p.username} передал @{target_p.username} {amount}💰!"
+            )
 
         elif category in ["предмет", "item"]:
             item_query = arg.strip()
@@ -130,7 +195,9 @@ class ItemsCog(commands.Cog):
                 return
 
             inv = await self.bot.db.get_inventory(sender_p.username)
-            tid = next((k for k in inv if item_query.lower() in ITEMS[k]["name"].lower()), None)
+            tid = next(
+                (k for k in inv if item_query.lower() in ITEMS[k]["name"].lower()), None
+            )
 
             if not tid:
                 await ctx.send("❌ У тебя нет такого предмета в инвентаре.")
@@ -139,6 +206,10 @@ class ItemsCog(commands.Cog):
             await self.bot.db.remove_from_inventory(sender_p.username, tid)
             await self.bot.db.add_to_inventory(target_p.username, tid)
 
-            await ctx.send(f"🎁 @{sender_p.username} передал @{target_p.username} предмет: {ITEMS[tid]['name']}!")
+            await ctx.send(
+                f"🎁 @{sender_p.username} передал @{target_p.username} предмет: {ITEMS[tid]['name']}!"
+            )
         else:
-            await ctx.send("❌ Использование: !передать золото @юзер <сумма> ИЛИ !передать предмет @юзер <название>")
+            await ctx.send(
+                "❌ Использование: !передать золото @юзер <сумма> ИЛИ !передать предмет @юзер <название>"
+            )

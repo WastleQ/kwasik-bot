@@ -7,7 +7,13 @@ from src.data import ACHIEVEMENTS, ITEMS, TITLES
 class RPGEngine:
     @staticmethod
     def get_stats(p):
-        res = {"str": p.str_stat, "vit": p.vit, "agi": p.agi, "sen": p.sen, "int": p.int_stat}
+        res = {
+            "str": p.str_stat,
+            "vit": p.vit,
+            "agi": p.agi,
+            "sen": p.sen,
+            "int": p.int_stat,
+        }
         # Собираем статы со всех 3-х слотов снаряжения
         for i_id in [p.weapon_id, p.armor_id, p.accessory_id]:
             if i_id and i_id in ITEMS:
@@ -17,7 +23,7 @@ class RPGEngine:
                 res["agi"] += item.get("bonus_agi", 0)
                 res["int"] += item.get("bonus_int", 0)
                 res["sen"] += item.get("bonus_sen", 0)
-        
+
         # Бонусы от активного титула
         if p.title in TITLES:
             t_data = TITLES[p.title]
@@ -29,13 +35,17 @@ class RPGEngine:
 
         return res
 
-    def get_max_hp(self, p): return 100 + (self.get_stats(p)["vit"] * 15)
-    def get_max_mp(self, p): return 150 + (self.get_stats(p)["int"] * 10)
+    def get_max_hp(self, p):
+        return 100 + (self.get_stats(p)["vit"] * 15)
+
+    def get_max_mp(self, p):
+        return 150 + (self.get_stats(p)["int"] * 10)
 
     def get_rank(self, lvl):
         ranks = {10: "E", 20: "D", 30: "C", 40: "B", 50: "A"}
         for t, r in ranks.items():
-            if lvl < t: return r
+            if lvl < t:
+                return r
         return "S"
 
     def handle_death(self, p):
@@ -70,25 +80,44 @@ class RPGEngine:
         st = self.get_stats(p)
         mob_data = random.choice(dungeon["mobs"])
         mob_name, mob_hp, is_boss = mob_data[0], mob_data[1], mob_data[2]
-        
+
         # ЛОГИКА СФЕРЫ АЛЧНОСТИ
         m_mult = 2.0 if p.accessory_id == "orb_of_avarice" else 1.0
 
         if is_magic and spell:
-            p_dmg = max(1, int(st["int"] * spell["damage_mult"] * m_mult))
+            s_type = spell.get("type", "attack")
+            if s_type == "heal":
+                heal_val = spell.get("heal", 250) + int(st["int"] * 1.5)
+                max_hp = self.get_max_hp(p)
+                p.hp = min(max_hp, p.hp + heal_val)
+                return (
+                    f"✨ @{p.username} кастует [{spell['name']}] и восстанавливает {heal_val} HP!",
+                    None,
+                )
+            elif s_type == "shield":
+                shield_val = spell.get("shield", 100) + int(st["int"] * 1.0)
+                p.hp = min(self.get_max_hp(p) + shield_val, p.hp + shield_val)
+                return (
+                    f"🛡️ @{p.username} создает Магический щит (+{shield_val} прочности)!",
+                    None,
+                )
+            else:
+                base_dmg = st["int"] * spell["damage_mult"] * m_mult
+                crit = random.random() < min(0.3, st["sen"] * 0.005)
+                p_dmg = max(1, int(base_dmg * (1.5 if crit else 1.0)))
         else:
             p_dmg = max(1, int(st["str"] * 2.2 + st["agi"] * 0.6))
-        
+
         rounds = math.ceil(mob_hp / p_dmg)
-        hits = 1 if is_magic else rounds
+        hits = 1 if (is_magic and spell and spell.get("type") == "attack") else rounds
         total_damage = 0
         dodge_ch = min(0.3, st["agi"] * 0.005)
-        
+
         for _ in range(hits):
             if random.random() > dodge_ch:
                 dmg = random.randint(dungeon["min_dmg"], dungeon["max_dmg"])
                 total_damage += max(1, dmg - int(st["vit"] * 0.7))
-        
+
         p.hp -= total_damage
         if p.hp <= 0:
             self.handle_death(p)
@@ -97,22 +126,26 @@ class RPGEngine:
         mob_exp = int(mob_hp * 0.4)
         p.exp += mob_exp
         p.gold += random.randint(30, 70) if is_boss else random.randint(10, 30)
-        
+
         # Проверяем достижения за охоту и боссов
         ach_msg = ""
         ach1 = self.unlock_achievement(p, "first_hunt")
         if ach1:
             ach_msg += f" 🏆 Достижение: [{ach1['name']}] (+{ach1['reward_gold']}💰)!"
-        
+
         if is_boss:
             ach2 = self.unlock_achievement(p, "boss_slayer")
             if ach2:
-                ach_msg += f" 🏆 Достижение: [{ach2['name']}] (+{ach2['reward_gold']}💰)!"
+                ach_msg += (
+                    f" 🏆 Достижение: [{ach2['name']}] (+{ach2['reward_gold']}💰)!"
+                )
 
         if p.lvl >= 10:
             ach3 = self.unlock_achievement(p, "hunter_10")
             if ach3:
-                ach_msg += f" 🏆 Достижение: [{ach3['name']}] (+{ach3['reward_gold']}💰)!"
+                ach_msg += (
+                    f" 🏆 Достижение: [{ach3['name']}] (+{ach3['reward_gold']}💰)!"
+                )
 
         # Шанс дропа (Босс или Обычный)
         drop = None
@@ -120,13 +153,29 @@ class RPGEngine:
             drop = dungeon["boss_drop"]
         elif not is_boss and dungeon.get("mob_drop") and random.random() < 0.05:
             drop = dungeon["mob_drop"]
-            
-        return f"⚔️ Победа над {mob_name}! +{mob_exp} EXP.{ach_msg}" + (" ✨ LVL UP!" if self.check_level_up(p) else ""), drop
+
+        crit_str = (
+            " 🔥 КРИТИЧЕСКИЙ УДАР МАГИИ!"
+            if (
+                is_magic
+                and spell
+                and spell.get("type") == "attack"
+                and "crit" in locals()
+                and crit
+            )
+            else ""
+        )
+        return f"⚔️ Победа над {mob_name}! +{mob_exp} EXP.{crit_str}{ach_msg}" + (
+            " ✨ LVL UP!" if self.check_level_up(p) else ""
+        ), drop
 
     def calculate_raid_damage(self, p, has_buff, is_magic, spell):
         st = self.get_stats(p)
         m_mult = 2.0 if p.accessory_id == "orb_of_avarice" else 1.0
         if is_magic and spell:
+            s_type = spell.get("type", "attack")
+            if s_type in ["heal", "shield"]:
+                return 0, False
             base = st["int"] * spell["damage_mult"] * m_mult
             crit = random.random() < min(0.3, st["sen"] * 0.005)
         else:

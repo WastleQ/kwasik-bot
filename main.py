@@ -14,12 +14,15 @@ TOKEN = os.getenv("TWITCH_TOKEN")
 CHANNEL = "kwasik67"
 ADMINS = ["wastle_", "akseniyy", "kwasik67"]
 
+
 class SoloLevelingBot(commands.Bot):
     def __init__(self):
         self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
-        super().__init__(token=TOKEN, prefix="!", initial_channels=[CHANNEL], loop=self._loop)
-        
+        super().__init__(
+            token=TOKEN, prefix="!", initial_channels=[CHANNEL], loop=self._loop
+        )
+
         self.db = DBManager()
         self.engine = RPGEngine()
         self.active_duels = {}
@@ -40,7 +43,11 @@ class SoloLevelingBot(commands.Bot):
                 module = importlib.import_module(f"src.cogs.{filename[:-3]}")
                 for name in dir(module):
                     obj = getattr(module, name)
-                    if isinstance(obj, type) and issubclass(obj, commands.Cog) and obj is not commands.Cog:
+                    if (
+                        isinstance(obj, type)
+                        and issubclass(obj, commands.Cog)
+                        and obj is not commands.Cog
+                    ):
                         self.add_cog(obj(self))
 
     async def event_ready(self):
@@ -50,10 +57,16 @@ class SoloLevelingBot(commands.Bot):
         self.regen_task.start()
 
     async def event_message(self, message):
-        if not message.echo: await self.handle_commands(message)
+        if not message.echo:
+            try:
+                await self.handle_commands(message)
+            except Exception:  # noqa: S110, BLE001
+                pass
 
     async def event_command_error(self, ctx, error):
-        if isinstance(error, commands.CommandNotFound) or (isinstance(error, TypeError) and "CommandNotFound" in str(error)):
+        if isinstance(error, commands.CommandNotFound) or (
+            isinstance(error, TypeError) and "CommandNotFound" in str(error)
+        ):
             return
         print(f"⚠️ Ошибка: {error}")
 
@@ -76,9 +89,20 @@ class SoloLevelingBot(commands.Bot):
     async def _passive_regen_logic(self):
         players = await self.db.get_all_players()
         for p in players:
+            changed = False
             max_hp = self.engine.get_max_hp(p)
             if p.hp < max_hp:
-                p.hp = min(max_hp, p.hp + 1 + int(self.engine.get_stats(p)['vit'] * 0.1))
+                p.hp = min(
+                    max_hp, p.hp + 1 + int(self.engine.get_stats(p)["vit"] * 0.1)
+                )
+                changed = True
+            max_mp = self.engine.get_max_mp(p)
+            if p.mp < max_mp:
+                p.mp = min(
+                    max_mp, p.mp + 2 + int(self.engine.get_stats(p)["int"] * 0.15)
+                )
+                changed = True
+            if changed:
                 await self.db.save(p)
 
     async def _raid_aoe_logic(self):
@@ -87,11 +111,12 @@ class SoloLevelingBot(commands.Bot):
             for uname in list(self.active_raid["parts"].keys()):
                 p = await self.get_player(uname)
                 p.hp -= damage
-                if p.hp <= 0: 
+                if p.hp <= 0:
                     self.engine.handle_death(p)
                     if p.username in self.active_raid["parts"]:
                         del self.active_raid["parts"][p.username]
                 await self.db.save(p)
+
 
 if __name__ == "__main__":
     SoloLevelingBot().run()

@@ -26,45 +26,59 @@ class Player:
     achievements: str = ""
     pvp_wins: int = 0
 
+
 class DBManager:
     def __init__(self, db_path="solo_leveling.db"):
         self.path = db_path
 
     async def init_db(self):
         async with aiosqlite.connect(self.path) as conn:
-            await conn.execute('''CREATE TABLE IF NOT EXISTS players 
+            await conn.execute("""CREATE TABLE IF NOT EXISTS players 
                 (username TEXT PRIMARY KEY, lvl INT, exp INT, stat_points INT, 
                  str_stat INT, agi INT, vit INT, int_stat INT, sen INT, 
                  hp INT, mp INT, gold INT, location_id TEXT,
                  weapon_id TEXT, armor_id TEXT, accessory_id TEXT, last_daily TEXT,
-                 title TEXT DEFAULT 'novice', achievements TEXT DEFAULT '', pvp_wins INT DEFAULT 0)''')
-            await conn.execute("CREATE TABLE IF NOT EXISTS inventory (username TEXT, item_id TEXT)")
-            
+                 title TEXT DEFAULT 'novice', achievements TEXT DEFAULT '', pvp_wins INT DEFAULT 0)""")
+            await conn.execute(
+                "CREATE TABLE IF NOT EXISTS inventory (username TEXT, item_id TEXT)"
+            )
+
             # Migration check for existing databases
             async with conn.execute("PRAGMA table_info(players)") as cursor:
                 columns = [row[1] for row in await cursor.fetchall()]
                 if "title" not in columns:
-                    await conn.execute("ALTER TABLE players ADD COLUMN title TEXT DEFAULT 'novice'")
+                    await conn.execute(
+                        "ALTER TABLE players ADD COLUMN title TEXT DEFAULT 'novice'"
+                    )
                 if "achievements" not in columns:
-                    await conn.execute("ALTER TABLE players ADD COLUMN achievements TEXT DEFAULT ''")
+                    await conn.execute(
+                        "ALTER TABLE players ADD COLUMN achievements TEXT DEFAULT ''"
+                    )
                 if "pvp_wins" not in columns:
-                    await conn.execute("ALTER TABLE players ADD COLUMN pvp_wins INT DEFAULT 0")
-            
+                    await conn.execute(
+                        "ALTER TABLE players ADD COLUMN pvp_wins INT DEFAULT 0"
+                    )
+
             await conn.commit()
 
     async def load(self, name: str) -> Player | None:
         async with aiosqlite.connect(self.path) as conn:
             conn.row_factory = aiosqlite.Row
-            async with conn.execute("SELECT * FROM players WHERE username=?", (name.lower(),)) as cursor:
+            async with conn.execute(
+                "SELECT * FROM players WHERE username=?", (name.lower(),)
+            ) as cursor:
                 row = await cursor.fetchone()
                 return Player(**dict(row)) if row else None
 
     async def save(self, p: Player):
         async with aiosqlite.connect(self.path) as conn:
             d = asdict(p)
-            cols = ', '.join(d.keys())
-            ques = ', '.join(['?'] * len(d))
-            await conn.execute(f"INSERT OR REPLACE INTO players ({cols}) VALUES ({ques})", list(d.values()))
+            cols = ", ".join(d.keys())
+            ques = ", ".join(["?"] * len(d))
+            await conn.execute(
+                f"INSERT OR REPLACE INTO players ({cols}) VALUES ({ques})",
+                list(d.values()),
+            )
             await conn.commit()
 
     async def get_all_players(self) -> list[Player]:
@@ -81,11 +95,19 @@ class DBManager:
 
     async def remove_from_inventory(self, u: str, i: str):
         async with aiosqlite.connect(self.path) as conn:
-            await conn.execute("DELETE FROM inventory WHERE rowid = (SELECT rowid FROM inventory WHERE username=? AND item_id=? LIMIT 1)", (u.lower(), i))
+            await conn.execute(
+                "DELETE FROM inventory WHERE rowid = (SELECT rowid FROM inventory WHERE username=? AND item_id=? LIMIT 1)",
+                (u.lower(), i),
+            )
             await conn.commit()
 
     async def get_inventory(self, u: str) -> list[str]:
-        async with aiosqlite.connect(self.path) as conn, conn.execute("SELECT item_id FROM inventory WHERE username=?", (u.lower(),)) as cursor:
+        async with (
+            aiosqlite.connect(self.path) as conn,
+            conn.execute(
+                "SELECT item_id FROM inventory WHERE username=?", (u.lower(),)
+            ) as cursor,
+        ):
             rows = await cursor.fetchall()
             return [r[0] for r in rows]
 
@@ -93,8 +115,7 @@ class DBManager:
         async with aiosqlite.connect(self.path) as conn:
             conn.row_factory = aiosqlite.Row
             async with conn.execute(
-                "SELECT * FROM players ORDER BY lvl DESC, exp DESC LIMIT ?", 
-                (limit,)
+                "SELECT * FROM players ORDER BY lvl DESC, exp DESC LIMIT ?", (limit,)
             ) as cursor:
                 rows = await cursor.fetchall()
                 return [Player(**dict(r)) for r in rows]
@@ -103,8 +124,7 @@ class DBManager:
         async with aiosqlite.connect(self.path) as conn:
             conn.row_factory = aiosqlite.Row
             async with conn.execute(
-                "SELECT * FROM players ORDER BY pvp_wins DESC LIMIT ?", 
-                (limit,)
+                "SELECT * FROM players ORDER BY pvp_wins DESC LIMIT ?", (limit,)
             ) as cursor:
                 rows = await cursor.fetchall()
                 return [Player(**dict(r)) for r in rows]

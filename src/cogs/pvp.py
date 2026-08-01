@@ -11,10 +11,14 @@ class PvPCog(commands.Cog):
     async def cmd_duel(self, ctx, target: str):
         t = target.strip("@").lower()
         if t == ctx.author.name.lower():
-            await ctx.send(f"❌ @{ctx.author.name}, нельзя вызывать самого себя на дуэль.")
+            await ctx.send(
+                f"❌ @{ctx.author.name}, нельзя вызывать самого себя на дуэль."
+            )
             return
         self.bot.active_duels[t] = ctx.author.name.lower()
-        await ctx.send(f"⚔️ @{t}, брошен вызов на дуэль от @{ctx.author.name}! Напиши !принять для начала боя.")
+        await ctx.send(
+            f"⚔️ @{t}, брошен вызов на дуэль от @{ctx.author.name}! Напиши !принять для начала боя."
+        )
 
     @commands.command(name="принять")
     async def cmd_accept(self, ctx):
@@ -22,7 +26,7 @@ class PvPCog(commands.Cog):
         if def_n not in self.bot.active_duels:
             await ctx.send("❌ У тебя нет активных вызовов на дуэль.")
             return
-            
+
         atk_n = self.bot.active_duels.pop(def_n)
         p1 = await self.bot.get_player(atk_n)
         p2 = await self.bot.get_player(def_n)
@@ -45,15 +49,25 @@ class PvPCog(commands.Cog):
             # 1. P1 атака на P2
             dodge2 = max(0.02, (s2["agi"] * 0.005) - (s1["sen"] * 0.004))
             if random.random() < dodge2:
-                combat_log.append(f"Р{round_num}: @{p2.username} увернулся от атаки @{p1.username}!")
+                combat_log.append(
+                    f"Р{round_num}: @{p2.username} увернулся от атаки @{p1.username}!"
+                )
             else:
                 crit1 = random.random() < min(0.35, s1["agi"] * 0.005)
                 base1 = s1["str"] * 2.0 + s1["agi"] * 0.3
                 red2 = s2["vit"] * 0.6
-                dmg1 = max(1, int((base1 * (1.5 if crit1 else 1.0) * random.uniform(0.9, 1.1)) - red2))
+                dmg1 = max(
+                    1,
+                    int(
+                        (base1 * (1.5 if crit1 else 1.0) * random.uniform(0.9, 1.1))
+                        - red2
+                    ),
+                )
                 p2.hp -= dmg1
                 crit_str = " (КРИТ!)" if crit1 else ""
-                combat_log.append(f"Р{round_num}: @{p1.username} нанес {dmg1}{crit_str} урона @{p2.username}")
+                combat_log.append(
+                    f"Р{round_num}: @{p1.username} нанес {dmg1}{crit_str} урона @{p2.username}"
+                )
 
             if p2.hp <= 0:
                 break
@@ -66,7 +80,13 @@ class PvPCog(commands.Cog):
                 crit2 = random.random() < min(0.35, s2["agi"] * 0.005)
                 base2 = s2["str"] * 2.0 + s2["agi"] * 0.3
                 red1 = s1["vit"] * 0.6
-                dmg2 = max(1, int((base2 * (1.5 if crit2 else 1.0) * random.uniform(0.9, 1.1)) - red1))
+                dmg2 = max(
+                    1,
+                    int(
+                        (base2 * (1.5 if crit2 else 1.0) * random.uniform(0.9, 1.1))
+                        - red1
+                    ),
+                )
                 p1.hp -= dmg2
                 crit_str2 = " (КРИТ!)" if crit2 else ""
                 combat_log.append(f"@{p2.username} ответил {dmg2}{crit_str2} урона")
@@ -95,6 +115,15 @@ class PvPCog(commands.Cog):
         await self.bot.db.save(p2)
         await ctx.send(res)
 
+    @commands.command(name="отклонить")
+    async def cmd_decline(self, ctx):
+        def_n = ctx.author.name.lower()
+        if def_n not in self.bot.active_duels:
+            await ctx.send("❌ У тебя нет активных вызовов на дуэль для отклонения.")
+            return
+        atk_n = self.bot.active_duels.pop(def_n)
+        await ctx.send(f"🛡️ @{ctx.author.name} отклонил вызов на дуэль от @{atk_n}.")
+
     @commands.command(name="топ_пвп", aliases=["топпвп"])
     async def cmd_top_pvp(self, ctx):
         top_players = await self.bot.db.get_top_pvp_players(5)
@@ -107,5 +136,5 @@ class PvPCog(commands.Cog):
         for i, p in enumerate(top_players, 1):
             if p.pvp_wins > 0:
                 lines.append(f"{i}. @{p.username} ({p.pvp_wins} побед)")
-        
+
         await ctx.send(res + " | ".join(lines))
