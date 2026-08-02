@@ -10,7 +10,7 @@ class InfoCog(commands.Cog):
     @commands.command(name="команды")
     async def cmd_help(self, ctx):
         await ctx.send(
-            "📜 Доступные команды: !профиль !статы !кач !квест !охота !отдых !войти !крафты !крафт !заклинания !достижения !титулы !титул !инвентарь !надеть !снять !пить !магазин !купить !продать !передать !пати !врата !переход !дуэль !принять !отклонить !рейд !атака !топ"
+            "📜 Доступные команды: !профиль !статы !кач !квест !награда !охота !отдых !войти !крафты !крафт !заклинания !достижения !титулы !титул !инвентарь !надеть !снять !пить !магазин !купить !продать !передать !пати !врата !переход !дуэль !принять !отклонить !рейд !атака !топ !топ_золото"
         )
 
     @commands.command(name="помощь")
@@ -130,5 +130,19 @@ class InfoCog(commands.Cog):
         for i, p in enumerate(top_players, 1):
             rank = self.bot.engine.get_rank(p.lvl)
             lines.append(f"{i}. @{p.username} (ур. {p.lvl}, [{rank}])")
+
+        await ctx.send(res + " | ".join(lines))
+
+    @commands.command(name="топ_золото")
+    async def cmd_top_gold(self, ctx):
+        top_players = await self.bot.db.get_top_gold_players(5)
+        if not top_players:
+            await ctx.send("💰 Таблица богачей пока пуста.")
+            return
+
+        res = "💰 ТОП БОГАЧЕЙ: "
+        lines = []
+        for i, p in enumerate(top_players, 1):
+            lines.append(f"{i}. @{p.username} ({p.gold} 💰)")
 
         await ctx.send(res + " | ".join(lines))

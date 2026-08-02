@@ -14,16 +14,44 @@ class GameplayCog(commands.Cog):
         p = await self.bot.get_player(ctx.author.name)
         today = str(datetime.date.today())  # noqa: DTZ011
         if p.last_daily == today:
-            await ctx.send(f"🚫 @{p.username}, тренировка на сегодня завершена!")
+            await ctx.send(
+                f"📜 @{p.username}, ежедневный квест на сегодня уже выполнен! Ждем сброса завтра."
+            )
+            return
+        await ctx.send(
+            "📜 Ежедневный квест Системы: Отжаться 100 раз, присесть 100 раз, покачать пресс и пробежать 10 км! Введи !награда чтобы получить заслуженные бонусы."
+        )
+
+    @commands.command(name="награда")
+    async def cmd_reward(self, ctx):
+        p = await self.bot.get_player(ctx.author.name)
+        today = str(datetime.date.today())  # noqa: DTZ011
+        if p.last_daily == today:
+            await ctx.send(
+                f"🚫 @{p.username}, ты уже забрал ежедневную награду сегодня!"
+            )
             return
 
         p.stat_points += 3
-        gold_reward = p.lvl * 50
+        p.exp += 50
+        gold_reward = p.lvl * 100
         p.gold += gold_reward
         p.last_daily = today
+        p.hp = self.bot.engine.get_max_hp(p)
+        p.mp = self.bot.engine.get_max_mp(p)
+
+        lvl_up_msg = ""
+        while p.exp >= p.lvl * 100:
+            p.exp -= p.lvl * 100
+            p.lvl += 1
+            p.stat_points += 5
+            p.hp = self.bot.engine.get_max_hp(p)
+            p.mp = self.bot.engine.get_max_mp(p)
+            lvl_up_msg = f" 🎉 УРОВЕНЬ ПОВЫШЕН ДО {p.lvl}!"
+
         await self.bot.db.save(p)
         await ctx.send(
-            f"🏋️‍♂️ @{p.username} завершил квест! Награда: +3 AP и {gold_reward}💰"
+            f"🎁 @{p.username} выполнил ежедневный квест Системы! Награда: +3 AP, +50 EXP, {gold_reward}💰, полное восстановление сил!{lvl_up_msg}"
         )
 
     @commands.command(name="отдых")

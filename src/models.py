@@ -128,3 +128,12 @@ class DBManager:
             ) as cursor:
                 rows = await cursor.fetchall()
                 return [Player(**dict(r)) for r in rows]
+
+    async def get_top_gold_players(self, limit=5) -> list[Player]:
+        async with aiosqlite.connect(self.path) as conn:
+            conn.row_factory = aiosqlite.Row
+            async with conn.execute(
+                "SELECT * FROM players ORDER BY gold DESC LIMIT ?", (limit,)
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return [Player(**dict(r)) for r in rows]
