@@ -5,6 +5,21 @@ from twitchio.ext import commands
 from src.data import DUNGEONS, ITEMS, SPELLS
 
 
+def _get_default_quest_loc(lvl: int) -> str:
+    if lvl < 10:
+        return "1"
+    elif lvl < 20:
+        return "2"
+    elif lvl < 30:
+        return "3"
+    elif lvl < 40:
+        return "4"
+    elif lvl < 50:
+        return "5"
+    else:
+        return "6"
+
+
 class GameplayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -13,13 +28,22 @@ class GameplayCog(commands.Cog):
     async def cmd_quest(self, ctx):
         p = await self.bot.get_player(ctx.author.name)
         today = str(datetime.date.today())  # noqa: DTZ011
+        if p.last_daily != today:
+            loc = _get_default_quest_loc(p.lvl)
+            p.daily_quest_loc = loc
+            p.daily_quest_target = 3
+            p.daily_quest_progress = 0
+            await self.bot.db.save(p)
+
         if p.last_daily == today:
             await ctx.send(
                 f"📜 @{p.username}, ежедневный квест на сегодня уже выполнен! Ждем сброса завтра."
             )
             return
+
+        loc_name = DUNGEONS[p.daily_quest_loc]["name"]
         await ctx.send(
-            "📜 Ежедневный квест Системы: Отжаться 100 раз, присесть 100 раз, покачать пресс и пробежать 10 км! Введи !награда чтобы получить заслуженные бонусы."
+            f"📜 Ежедневный квест Системы: Уничтожьте {p.daily_quest_target} монстров в локации «{loc_name}»! Прогресс: {p.daily_quest_progress}/{p.daily_quest_target}. Введите !охота в этих вратах и !награда после завершения."
         )
 
     @commands.command(name="награда")
@@ -29,6 +53,18 @@ class GameplayCog(commands.Cog):
         if p.last_daily == today:
             await ctx.send(
                 f"🚫 @{p.username}, ты уже забрал ежедневную награду сегодня!"
+            )
+            return
+
+        loc = _get_default_quest_loc(p.lvl)
+        if not p.daily_quest_loc:
+            p.daily_quest_loc = loc
+            p.daily_quest_target = 3
+
+        if p.daily_quest_progress < p.daily_quest_target:
+            loc_name = DUNGEONS[p.daily_quest_loc]["name"]
+            await ctx.send(
+                f"🚫 @{p.username}, ежедневный квест еще не выполнен! Прогресс: {p.daily_quest_progress}/{p.daily_quest_target} в локации «{loc_name}». Используйте !охота."
             )
             return
 
@@ -110,6 +146,22 @@ class GameplayCog(commands.Cog):
             for drop in drops:
                 await self.bot.db.add_to_inventory(p.username, drop)
                 msg += f" 💎 Находка: {ITEMS[drop]['name']}!"
+
+        today = str(datetime.date.today())  # noqa: DTZ011
+        if p.last_daily != today:
+            loc = _get_default_quest_loc(p.lvl)
+            if not p.daily_quest_loc:
+                p.daily_quest_loc = loc
+                p.daily_quest_target = 3
+
+            if (
+                p.location_id == p.daily_quest_loc
+                and p.daily_quest_progress < p.daily_quest_target
+            ):
+                p.daily_quest_progress += 1
+                msg += f" 🎯 [Квест Системы: {p.daily_quest_progress}/{p.daily_quest_target}]"
+                if p.daily_quest_progress >= p.daily_quest_target:
+                    msg += " ✨ Квест выполнен! Введите !награда чтобы забрать бонус!"
 
         await self.bot.db.save(p)
         await ctx.send(msg)

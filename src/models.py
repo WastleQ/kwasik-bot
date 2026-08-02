@@ -25,6 +25,9 @@ class Player:
     title: str = "novice"
     achievements: str = ""
     pvp_wins: int = 0
+    daily_quest_loc: str = "1"
+    daily_quest_target: int = 3
+    daily_quest_progress: int = 0
 
 
 class DBManager:
@@ -38,7 +41,8 @@ class DBManager:
                  str_stat INT, agi INT, vit INT, int_stat INT, sen INT, 
                  hp INT, mp INT, gold INT, location_id TEXT,
                  weapon_id TEXT, armor_id TEXT, accessory_id TEXT, last_daily TEXT,
-                 title TEXT DEFAULT 'novice', achievements TEXT DEFAULT '', pvp_wins INT DEFAULT 0)""")
+                 title TEXT DEFAULT 'novice', achievements TEXT DEFAULT '', pvp_wins INT DEFAULT 0,
+                 daily_quest_loc TEXT DEFAULT '1', daily_quest_target INT DEFAULT 3, daily_quest_progress INT DEFAULT 0)""")
             await conn.execute(
                 "CREATE TABLE IF NOT EXISTS inventory (username TEXT, item_id TEXT)"
             )
@@ -57,6 +61,18 @@ class DBManager:
                 if "pvp_wins" not in columns:
                     await conn.execute(
                         "ALTER TABLE players ADD COLUMN pvp_wins INT DEFAULT 0"
+                    )
+                if "daily_quest_loc" not in columns:
+                    await conn.execute(
+                        "ALTER TABLE players ADD COLUMN daily_quest_loc TEXT DEFAULT '1'"
+                    )
+                if "daily_quest_target" not in columns:
+                    await conn.execute(
+                        "ALTER TABLE players ADD COLUMN daily_quest_target INT DEFAULT 3"
+                    )
+                if "daily_quest_progress" not in columns:
+                    await conn.execute(
+                        "ALTER TABLE players ADD COLUMN daily_quest_progress INT DEFAULT 0"
                     )
 
             await conn.commit()
