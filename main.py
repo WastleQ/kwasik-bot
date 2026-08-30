@@ -5,6 +5,7 @@ import os
 import random
 import socketserver
 import threading
+import time
 
 from dotenv import load_dotenv
 from twitchio.ext import commands, routines
@@ -55,6 +56,7 @@ class SoloLevelingBot(commands.Bot):
         self.parties = {}
         self.party_invites = {}
         self.player_party = {}
+        self.user_cooldowns = {}
 
         self.load_extensions()
 
@@ -147,6 +149,16 @@ class SoloLevelingBot(commands.Bot):
 
     async def event_message(self, message):
         if not message.echo:
+            content = message.content or ""
+            if content.startswith("!"):
+                username = message.author.name.lower() if message.author else ""
+                admin_lower = [a.lower() for a in ADMINS]
+                if username and username not in admin_lower:
+                    now = time.time()
+                    last_time = self.user_cooldowns.get(username, 0)
+                    if now - last_time < 5.0:
+                        return
+                    self.user_cooldowns[username] = now
             try:
                 await self.handle_commands(message)
             except Exception:  # noqa: S110, BLE001
