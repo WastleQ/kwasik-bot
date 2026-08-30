@@ -10,12 +10,22 @@ class InfoCog(commands.Cog):
     @commands.command(name="команды")
     async def cmd_help(self, ctx):
         await ctx.send(
-            "📜 Доступные команды: !профиль !статы !кач !квест !награда !охота !отдых !войти !крафты !крафт !заклинания !достижения !титулы !титул !инвентарь !надеть !снять !пить !магазин !купить !продать !передать !пати !врата !переход !дуэль !принять !отклонить !рейд !атака !топ !топ_золото"
+            "📜 Доступные команды: !профиль !статы !кач !квест !награда !охота !отдых !войти !крафты !крафт !заклинания !достижения !титулы !титул !инвентарь !надеть !снять !пить !магазин !купить !продать !передать !пати !врата !переход !дуэль !принять !отклонить !рейд !атака !топ !топ_золото !гит"
         )
 
     @commands.command(name="помощь")
     async def cmd_help_alias(self, ctx):
         await self.cmd_help(ctx)
+
+    @commands.command(name="гит")
+    async def cmd_git(self, ctx):
+        await ctx.send(
+            "📂 Исходный код Kwasik Bot (Solo Leveling RPG): https://github.com/WastleQ/kwasik-bot/tree/main"
+        )
+
+    @commands.command(name="git")
+    async def cmd_git_alias(self, ctx):
+        await self.cmd_git(ctx)
 
     @commands.command(name="статы")
     async def cmd_stats(self, ctx):
