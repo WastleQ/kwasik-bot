@@ -1,7 +1,10 @@
 import asyncio
+import http.server
 import importlib
 import os
 import random
+import socketserver
+import threading
 
 from dotenv import load_dotenv
 from twitchio.ext import commands, routines
@@ -12,8 +15,26 @@ from src.models import DBManager, Player
 
 load_dotenv()
 TOKEN = os.getenv("TWITCH_TOKEN")
-CHANNEL = "kwasik67"
+CHANNEL = "akseniyy"
 ADMINS = ["wastle_", "akseniyy", "kwasik67"]
+
+
+def run_dummy_server():
+    port = int(os.getenv("PORT", "10000"))
+
+    class HealthCheckHandler(http.server.SimpleHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"Kwasik Bot is alive!")
+
+        def log_message(self, format, *args):
+            pass
+
+    with socketserver.TCPServer(("", port), HealthCheckHandler) as httpd:
+        print(f"🌐 Dummy HTTP server running on port {port}")
+        httpd.serve_forever()
 
 
 class SoloLevelingBot(commands.Bot):
@@ -187,4 +208,5 @@ class SoloLevelingBot(commands.Bot):
 
 
 if __name__ == "__main__":
+    threading.Thread(target=run_dummy_server, daemon=True).start()
     SoloLevelingBot().run()
