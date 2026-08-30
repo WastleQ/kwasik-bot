@@ -152,8 +152,8 @@ class SoloLevelingBot(commands.Bot):
             content = message.content or ""
             if content.startswith("!"):
                 username = message.author.name.lower() if message.author else ""
-                admin_lower = [a.lower() for a in ADMINS]
-                if username and username not in admin_lower:
+                exempt_users = ["akseniyy", "wastle_"]
+                if username and username not in exempt_users:
                     now = time.time()
                     last_time = self.user_cooldowns.get(username, 0)
                     if now - last_time < 5.0:
