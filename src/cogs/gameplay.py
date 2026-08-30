@@ -143,9 +143,15 @@ class GameplayCog(commands.Cog):
 
         msg, drops = self.bot.engine.fight(p, DUNGEONS[p.location_id], is_magic, spell)
         if drops:
+            drop_names = []
             for drop in drops:
                 await self.bot.db.add_to_inventory(p.username, drop)
-                msg += f" 💎 Находка: {ITEMS[drop]['name']}!"
+                if drop in ITEMS:
+                    drop_names.append(ITEMS[drop]["name"])
+            if len(drop_names) == 1:
+                msg += f" 💎 Находка: {drop_names[0]}!"
+            elif len(drop_names) > 1:
+                msg += f" 💎 Находки: {', '.join(drop_names)}!"
 
         today = str(datetime.date.today())  # noqa: DTZ011
         if p.last_daily != today:
