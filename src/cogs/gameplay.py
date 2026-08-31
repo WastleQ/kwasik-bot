@@ -211,10 +211,14 @@ class GameplayCog(commands.Cog):
             "int": "int_stat",
             "интеллект": "int_stat",
             "ману": "int_stat",
+            "восприятие": "sen",
+            "sen": "sen",
+            "сен": "sen",
+            "сенсор": "sen",
         }
         attr = m.get(stat.lower())
         if not attr:
-            await ctx.send("❓ Выбери: сила, ловкость, живучесть, инт")
+            await ctx.send("❓ Выбери: сила, ловкость, живучесть, инт, восприятие")
             return
 
         setattr(p, attr, getattr(p, attr) + count)

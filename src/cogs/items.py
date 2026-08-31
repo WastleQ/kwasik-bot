@@ -42,6 +42,8 @@ class ItemsCog(commands.Cog):
             await ctx.send("❌ Этот предмет нельзя надеть.")
             return
 
+        p.hp = min(p.hp, self.bot.engine.get_max_hp(p))
+        p.mp = min(p.mp, self.bot.engine.get_max_mp(p))
         await self.bot.db.save(p)
         await ctx.send(f"✅ @{p.username} экипировал {ITEMS[tid]['name']} ({slot})")
 
@@ -58,6 +60,8 @@ class ItemsCog(commands.Cog):
         else:
             await ctx.send("❌ Укажите слот: оружие, броня или аксессуар.")
             return
+        p.hp = min(p.hp, self.bot.engine.get_max_hp(p))
+        p.mp = min(p.mp, self.bot.engine.get_max_mp(p))
         await self.bot.db.save(p)
         await ctx.send(f"✅ Слот {slot} теперь пуст.")
 
@@ -67,16 +71,16 @@ class ItemsCog(commands.Cog):
         gear = []
         crystals = []
 
-        for i in ITEMS.values():
+        for k, i in ITEMS.items():
             if i.get("price", 0) <= 0:
                 continue
-            item_str = f"{i['name']} ({i['price']}💰)"
             if i.get("type") == "use":
-                potions.append(item_str)
+                potions.append(f"{i['name']} ({i['price']}💰)")
             elif i.get("type") == "material":
-                crystals.append(item_str)
+                rank = k.split("_")[1].upper() if "_" in k else "E"
+                crystals.append(f"{rank} ({i['price']}💰)")
             else:
-                gear.append(item_str)
+                gear.append(f"{i['name']} ({i['price']}💰)")
 
         lines = ["🏪 Магазин:"]
         if potions:
@@ -157,14 +161,28 @@ class ItemsCog(commands.Cog):
         await ctx.send(f"✨ @{p.username} успешно скрафтил [{recipe['name']}]!")
 
     @commands.command(name="продать")
-    async def cmd_sell(self, ctx, *, name: str = ""):
+    async def cmd_sell(self, ctx, *, args: str = ""):
+        args = args.strip()
+        if not args:
+            await ctx.send(
+                "❌ Укажите предмет для продажи. Пример: !продать Кристалл D-ранга 3"
+            )
+            return
+
+        parts = args.split()
+        count = 1
+        item_query = args
+        if len(parts) > 1 and parts[-1].isdigit():
+            count = int(parts[-1])
+            item_query = " ".join(parts[:-1])
+
         p = await self.bot.get_player(ctx.author.name)
         inv = await self.bot.db.get_inventory(p.username)
         tid = next(
             (
                 k
                 for k in inv
-                if name.lower() in ITEMS[k]["name"].lower()
+                if item_query.lower() in ITEMS[k]["name"].lower()
                 and ITEMS[k].get("price", 0) > 0
             ),
             None,
@@ -172,12 +190,37 @@ class ItemsCog(commands.Cog):
         if not tid:
             await ctx.send("❌ Предмет не найден в инвентаре или его нельзя продать.")
             return
+
         item = ITEMS[tid]
-        sell_price = item["price"] // 2
+        available_count = inv.count(tid)
+        sell_count = min(count, available_count)
+        if sell_count <= 0:
+            await ctx.send("❌ У вас нет этого предмета в достаточном количестве.")
+            return
+
+        sell_price = (item["price"] // 2) * sell_count
         p.gold += sell_price
-        await self.bot.db.remove_from_inventory(p.username, tid)
+
+        for _ in range(sell_count):
+            await self.bot.db.remove_from_inventory(p.username, tid)
+
+        remaining_inv = await self.bot.db.get_inventory(p.username)
+        if tid not in remaining_inv:
+            if p.weapon_id == tid:
+                p.weapon_id = None
+            if p.armor_id == tid:
+                p.armor_id = None
+            if p.accessory_id == tid:
+                p.accessory_id = None
+
+        p.hp = min(p.hp, self.bot.engine.get_max_hp(p))
+        p.mp = min(p.mp, self.bot.engine.get_max_mp(p))
+
         await self.bot.db.save(p)
-        await ctx.send(f"💰 @{p.username} продал {item['name']} за {sell_price}💰!")
+        count_str = f" (x{sell_count})" if sell_count > 1 else ""
+        await ctx.send(
+            f"💰 @{p.username} продал {item['name']}{count_str} за {sell_price}💰!"
+        )
 
     @commands.command(name="пить", aliases=["использовать"])
     async def cmd_use(self, ctx, *, name: str = ""):
