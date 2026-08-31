@@ -84,19 +84,41 @@ class InfoCog(commands.Cog):
                 else f"🔒 Требуется: {ACHIEVEMENTS.get(req, {}).get('name', req)}"
             )
             active_mark = " (Активен)" if p.title == key else ""
-            lines.append(f"{t['name']} [{key}]{active_mark}: {status}")
+            lines.append(f"{t['name']}{active_mark}: {status}")
 
-        await ctx.send("👑 Доступные титулы: " + " | ".join(lines))
+        await ctx.send("👑 Титулы: " + " | ".join(lines))
 
     @commands.command(name="титул")
-    async def cmd_set_title(self, ctx, title_key: str = ""):
-        title_key = title_key.lower().strip()
-        if not title_key or title_key not in TITLES:
-            await ctx.send("❌ Укажите корректный ключ титула. Посмотрите !титулы")
+    async def cmd_set_title(self, ctx, *, title_input: str = ""):
+        title_input = title_input.strip()
+        if not title_input:
+            await ctx.send("❌ Укажите название титула. Посмотрите !титулы")
+            return
+
+        norm_input = (
+            title_input.lower().replace(" ", "").replace("-", "").replace("_", "")
+        )
+
+        matched_key = None
+        for key, t_data in TITLES.items():
+            norm_key = key.lower().replace("_", "")
+            norm_name = (
+                t_data["name"]
+                .lower()
+                .replace(" ", "")
+                .replace("-", "")
+                .replace("_", "")
+            )
+            if norm_input == norm_key or norm_input == norm_name:
+                matched_key = key
+                break
+
+        if not matched_key:
+            await ctx.send("❌ Такой титул не найден. Посмотрите !титулы")
             return
 
         p = await self.bot.get_player(ctx.author.name)
-        t_data = TITLES[title_key]
+        t_data = TITLES[matched_key]
         req = t_data.get("req")
         unlocked_ach = [a.strip() for a in p.achievements.split(",") if a.strip()]
 
@@ -106,7 +128,7 @@ class InfoCog(commands.Cog):
             )
             return
 
-        p.title = title_key
+        p.title = matched_key
         await self.bot.db.save(p)
         await ctx.send(f"👑 @{p.username} сменил титул на: {t_data['name']}!")
 
