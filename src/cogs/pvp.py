@@ -269,9 +269,9 @@ class PvPCog(commands.Cog):
             self.bot.user_active_pvp.pop(match["p2"], None)
 
             if p1.hp <= 0:
-                self.bot.engine.handle_death(p1)
+                self.bot.engine.handle_pvp_defeat(p1)
             if p2.hp <= 0:
-                self.bot.engine.handle_death(p2)
+                self.bot.engine.handle_pvp_defeat(p2)
 
             if winner_p:
                 winner_p.pvp_wins += 1

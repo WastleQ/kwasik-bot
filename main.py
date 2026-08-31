@@ -164,6 +164,8 @@ class SoloLevelingBot(commands.Bot):
         if not p:
             p = Player(username=username)
             await self.db.save(p)
+        else:
+            self.engine.clamp_resources(p)
         return p
 
     @commands.command(name="админ_вещи")

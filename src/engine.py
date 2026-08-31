@@ -54,6 +54,16 @@ class RPGEngine:
         p.gold = max(0, int(p.gold * 0.9))
         p.location_id = "0"
 
+    def handle_pvp_defeat(self, p):
+        p.hp = max(1, int(self.get_max_hp(p) * 0.1))
+        p.mp = max(0, int(self.get_max_mp(p) * 0.1))
+
+    def clamp_resources(self, p):
+        p.hp = min(p.hp, self.get_max_hp(p))
+        p.mp = min(p.mp, self.get_max_mp(p))
+        p.hp = max(0, p.hp)
+        p.mp = max(0, p.mp)
+
     def check_level_up(self, p):
         up = False
         while p.exp >= p.lvl * 100:
