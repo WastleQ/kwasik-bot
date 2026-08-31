@@ -1,4 +1,5 @@
 import datetime
+import time
 
 from twitchio.ext import commands
 
@@ -23,6 +24,7 @@ def _get_default_quest_loc(lvl: int) -> str:
 class GameplayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.rest_cooldowns = {}
 
     @commands.command(name="квест")
     async def cmd_quest(self, ctx):
@@ -93,11 +95,26 @@ class GameplayCog(commands.Cog):
     @commands.command(name="отдых")
     async def cmd_rest(self, ctx):
         p = await self.bot.get_player(ctx.author.name)
+        now = time.time()
+        last_rest = self.rest_cooldowns.get(p.username, 0)
+        cooldown_duration = 600  # 10 minutes
+
+        if now - last_rest < cooldown_duration:
+            remaining = int(cooldown_duration - (now - last_rest))
+            mins = remaining // 60
+            secs = remaining % 60
+            await ctx.send(
+                f"❌ @{p.username}, отдыхать можно раз в 10 минут! Подожди еще {mins} мин {secs} сек."
+            )
+            return
+
         max_hp = self.bot.engine.get_max_hp(p)
         max_mp = self.bot.engine.get_max_mp(p)
         if p.hp >= max_hp and p.mp >= max_mp:
             await ctx.send(f"🏕️ @{p.username}, ты и так полностью полон сил!")
             return
+
+        self.rest_cooldowns[p.username] = now
         p.hp = max_hp
         p.mp = max_mp
         await self.bot.db.save(p)
