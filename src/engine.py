@@ -49,7 +49,9 @@ class RPGEngine:
         return "S"
 
     def handle_death(self, p):
-        p.hp = self.get_max_hp(p) // 2
+        p.hp = max(1, int(self.get_max_hp(p) * 0.1))
+        p.mp = max(0, int(self.get_max_mp(p) * 0.1))
+        p.gold = max(0, int(p.gold * 0.9))
         p.location_id = "0"
 
     def check_level_up(self, p):
@@ -186,8 +188,9 @@ class RPGEngine:
             else ""
         )
         max_hp = self.get_max_hp(p)
+        max_mp = self.get_max_mp(p)
         return (
-            f"⚔️ Победа над {mob_name}! +{mob_exp} EXP. (❤️ Осталось: {p.hp}/{max_hp} HP){crit_str}{ach_msg}"
+            f"⚔️ Победа над {mob_name}! +{mob_exp} EXP. (❤️ Осталось: {p.hp}/{max_hp} HP, 🔮 {p.mp}/{max_mp} MP){crit_str}{ach_msg}"
             + (" ✨ LVL UP!" if self.check_level_up(p) else ""),
             drops,
         )

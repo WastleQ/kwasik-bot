@@ -194,12 +194,7 @@ class ItemsCog(commands.Cog):
         p = await self.bot.get_player(ctx.author.name)
         inv = await self.bot.db.get_inventory(p.username)
         tid = next(
-            (
-                k
-                for k in inv
-                if item_query.lower() in ITEMS[k]["name"].lower()
-                and ITEMS[k].get("price", 0) > 0
-            ),
+            (k for k in inv if item_query.lower() in ITEMS[k]["name"].lower()),
             None,
         )
         if not tid:
@@ -213,7 +208,9 @@ class ItemsCog(commands.Cog):
             await ctx.send("❌ У вас нет этого предмета в достаточном количестве.")
             return
 
-        sell_price = (item["price"] // 2) * sell_count
+        base_price = item.get("price", 0)
+        unit_price = base_price // 2 if base_price > 0 else 250
+        sell_price = unit_price * sell_count
         p.gold += sell_price
 
         for _ in range(sell_count):
