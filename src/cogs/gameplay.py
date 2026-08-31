@@ -173,6 +173,58 @@ class GameplayCog(commands.Cog):
         await self.bot.db.save(p)
         await ctx.send(msg)
 
+    @commands.command(name="каст", aliases=["cast"])
+    async def cmd_cast_spell(self, ctx, *, spell_key: str = ""):
+        spell_key = spell_key.lower().strip()
+        if not spell_key:
+            await ctx.send(
+                f"❌ Укажите заклинание. Доступны: {', '.join(SPELLS.keys())}"
+            )
+            return
+
+        spell = SPELLS.get(spell_key) or next(
+            (s for k, s in SPELLS.items() if spell_key in s["name"].lower()),
+            None,
+        )
+        if not spell:
+            await ctx.send(
+                f"❌ Нет такого заклинания. Доступны: {', '.join(SPELLS.keys())}"
+            )
+            return
+
+        p = await self.bot.get_player(ctx.author.name)
+        if p.mp < spell["mp_cost"]:
+            await ctx.send(
+                f"❌ @{p.username}, мало маны! Нужно {spell['mp_cost']} MP (у тебя {p.mp})."
+            )
+            return
+
+        p.mp -= spell["mp_cost"]
+        st = self.bot.engine.get_stats(p)
+        s_type = spell.get("type", "attack")
+
+        if s_type == "heal":
+            heal_val = spell.get("heal", 250) + int(st["int"] * 1.5)
+            max_hp = self.bot.engine.get_max_hp(p)
+            p.hp = min(max_hp, p.hp + heal_val)
+            await self.bot.db.save(p)
+            await ctx.send(
+                f"✨ @{p.username} кастует [{spell['name']}] и восстанавливает {heal_val} HP! (❤️ {p.hp}/{max_hp} HP, 🔮 {p.mp}/{self.bot.engine.get_max_mp(p)} MP)"
+            )
+        elif s_type == "shield":
+            shield_val = spell.get("shield", 150) + int(st["int"] * 1.5)
+            max_hp = self.bot.engine.get_max_hp(p)
+            p.hp = min(max_hp + shield_val, p.hp + shield_val)
+            await self.bot.db.save(p)
+            await ctx.send(
+                f"🛡️ @{p.username} создает Магический щит (+{shield_val} прочности)! (❤️ {p.hp}/{max_hp} HP, 🔮 {p.mp}/{self.bot.engine.get_max_mp(p)} MP)"
+            )
+        else:
+            p.mp += spell["mp_cost"]
+            await ctx.send(
+                f"❌ @{p.username}, боевые заклинания (шар, молния, метеор) можно использовать только во время охоты через !охота каст [название]!"
+            )
+
     @commands.command(name="войти")
     async def cmd_enter_gate(self, ctx):
         if not getattr(self.bot, "active_red_gate", None):
