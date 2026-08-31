@@ -36,7 +36,7 @@ class RPGEngine:
         return res
 
     def get_max_hp(self, p):
-        return 100 + (self.get_stats(p)["vit"] * 15)
+        return 100 + (self.get_stats(p)["vit"] * 10)
 
     def get_max_mp(self, p):
         return 150 + (self.get_stats(p)["int"] * 5)
