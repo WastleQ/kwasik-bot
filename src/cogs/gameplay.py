@@ -222,7 +222,7 @@ class GameplayCog(commands.Cog):
         else:
             p.mp += spell["mp_cost"]
             await ctx.send(
-                f"❌ @{p.username}, боевые заклинания (шар, молния, метеор) можно использовать только во время охоты через !охота каст [название]!"
+                f"❌ @{p.username}, боевые заклинания можно использовать только во время охоты или дуэли."
             )
 
     @commands.command(name="войти")
