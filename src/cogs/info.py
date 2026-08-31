@@ -78,13 +78,11 @@ class InfoCog(commands.Cog):
         for key, t in TITLES.items():
             req = t.get("req")
             is_unlocked = req is None or req in unlocked_ach
-            status = (
-                "🔓 Доступен"
-                if is_unlocked
-                else f"🔒 Требуется: {ACHIEVEMENTS.get(req, {}).get('name', req)}"
-            )
             active_mark = " (Активен)" if p.title == key else ""
-            lines.append(f"{t['name']}{active_mark}: {status}")
+            if is_unlocked:
+                lines.append(f"{t['name']}{active_mark}: 🔓 Доступен")
+            else:
+                lines.append(f"{t['name']}{active_mark}")
 
         await ctx.send("👑 Титулы: " + " | ".join(lines))
 
