@@ -133,22 +133,40 @@ class ItemsCog(commands.Cog):
     @commands.command(name="крафты")
     async def cmd_crafts(self, ctx):
         recipes_info = []
-        for r_key, r in CRAFTING_RECIPES.items():
+        for r in CRAFTING_RECIPES.values():
             reqs = ", ".join(
                 [f"{count}x {ITEMS[mat]['name']}" for mat, count in r["req"].items()]
             )
-            recipes_info.append(
-                f"{r['name']} [{r_key}]: Требует [{reqs}] ({r['desc']})"
-            )
-        await ctx.send("⚒️ Доступные рецепты крафта: " + " | ".join(recipes_info))
+            recipes_info.append(f"{r['name']}: Требует [{reqs}] ({r['desc']})")
+        await ctx.send("⚒️ Рецепты крафта: " + " | ".join(recipes_info))
 
     @commands.command(name="крафт")
     async def cmd_craft(self, ctx, *, name: str = ""):
-        name = name.lower().strip()
-        recipe = CRAFTING_RECIPES.get(name) or next(
-            (r for r in CRAFTING_RECIPES.values() if name in r["name"].lower()),
-            None,
-        )
+        name = name.strip()
+        if not name:
+            await ctx.send("❌ Укажите название рецепта. Посмотрите !крафты")
+            return
+
+        norm_input = name.lower().replace(" ", "").replace("-", "").replace("_", "")
+
+        recipe = None
+        for r_key, r_data in CRAFTING_RECIPES.items():
+            norm_key = r_key.lower().replace("_", "")
+            norm_name = (
+                r_data["name"]
+                .lower()
+                .replace(" ", "")
+                .replace("-", "")
+                .replace("_", "")
+            )
+            if (
+                norm_input == norm_key
+                or norm_input in norm_name
+                or norm_name in norm_input
+            ):
+                recipe = r_data
+                break
+
         if not recipe:
             await ctx.send("❌ Рецепт не найден. Посмотрите !крафты")
             return
