@@ -242,24 +242,24 @@ RAID_BOSSES = {
 SPELLS = {
     "шар": {
         "name": "Огненный шар",
-        "mp_cost": 30,
-        "damage_mult": 5.0,
+        "mp_cost": 35,
+        "damage_mult": 3.0,
         "type": "attack",
     },
     "молния": {
         "name": "Удар молнии",
-        "mp_cost": 50,
-        "damage_mult": 8.0,
+        "mp_cost": 60,
+        "damage_mult": 5.0,
         "type": "attack",
     },
     "метеор": {
         "name": "Метеорит",
-        "mp_cost": 90,
-        "damage_mult": 12.0,
+        "mp_cost": 100,
+        "damage_mult": 7.5,
         "type": "attack",
     },
     "хил": {"name": "Исцеление", "mp_cost": 40, "heal": 250, "type": "heal"},
-    "щит": {"name": "Магический щит", "mp_cost": 35, "shield": 100, "type": "shield"},
+    "щит": {"name": "Магический щит", "mp_cost": 40, "shield": 150, "type": "shield"},
 }
 
 ACHIEVEMENTS = {

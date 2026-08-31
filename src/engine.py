@@ -98,7 +98,7 @@ class RPGEngine:
         mob_name, mob_hp, is_boss = mob_data[0], mob_data[1], mob_data[2]
 
         # ЛОГИКА СФЕРЫ АЛЧНОСТИ
-        m_mult = 2.0 if p.accessory_id == "orb_of_avarice" else 1.0
+        m_mult = 1.3 if p.accessory_id == "orb_of_avarice" else 1.0
 
         if is_magic and spell:
             s_type = spell.get("type", "attack")
@@ -111,7 +111,7 @@ class RPGEngine:
                     None,
                 )
             elif s_type == "shield":
-                shield_val = spell.get("shield", 100) + int(st["int"] * 1.0)
+                shield_val = spell.get("shield", 150) + int(st["int"] * 1.5)
                 p.hp = min(self.get_max_hp(p) + shield_val, p.hp + shield_val)
                 return (
                     f"🛡️ @{p.username} создает Магический щит (+{shield_val} прочности)!",
@@ -122,7 +122,7 @@ class RPGEngine:
                 crit = random.random() < min(0.3, st["sen"] * 0.005)
                 p_dmg = max(1, int(base_dmg * (1.5 if crit else 1.0)))
         else:
-            p_dmg = max(1, int(st["str"] * 2.2 + st["agi"] * 0.6))
+            p_dmg = max(1, int(st["str"] * 3.0 + st["agi"] * 0.8))
 
         rounds = math.ceil(mob_hp / p_dmg)
         hits = 1 if (is_magic and spell and spell.get("type") == "attack") else rounds
@@ -185,13 +185,16 @@ class RPGEngine:
             )
             else ""
         )
-        return f"⚔️ Победа над {mob_name}! +{mob_exp} EXP.{crit_str}{ach_msg}" + (
-            " ✨ LVL UP!" if self.check_level_up(p) else ""
-        ), drops
+        max_hp = self.get_max_hp(p)
+        return (
+            f"⚔️ Победа над {mob_name}! +{mob_exp} EXP. (❤️ Осталось: {p.hp}/{max_hp} HP){crit_str}{ach_msg}"
+            + (" ✨ LVL UP!" if self.check_level_up(p) else ""),
+            drops,
+        )
 
     def calculate_raid_damage(self, p, has_buff, is_magic, spell):
         st = self.get_stats(p)
-        m_mult = 2.0 if p.accessory_id == "orb_of_avarice" else 1.0
+        m_mult = 1.3 if p.accessory_id == "orb_of_avarice" else 1.0
         if is_magic and spell:
             s_type = spell.get("type", "attack")
             if s_type in ["heal", "shield"]:
@@ -199,7 +202,7 @@ class RPGEngine:
             base = st["int"] * spell["damage_mult"] * m_mult
             crit = random.random() < min(0.3, st["sen"] * 0.005)
         else:
-            base = st["str"] * 2.5
+            base = st["str"] * 3.0
             crit = random.random() < min(0.4, st["agi"] * 0.005)
         dmg = int(base * (2.0 if crit else 1.0))
         return (int(dmg * 1.1) if has_buff else dmg), crit
