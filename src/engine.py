@@ -67,7 +67,8 @@ class RPGEngine:
             + (p.int_stat - 10)
             + (p.sen - 10)
         )
-        if current_spent + p.stat_points > max_earned:
+        total_points = current_spent + p.stat_points
+        if total_points > max_earned:
             p.str_stat = 10
             p.agi = 10
             p.vit = 10
@@ -76,6 +77,8 @@ class RPGEngine:
             p.stat_points = max_earned
             p.hp = self.get_max_hp(p)
             p.mp = self.get_max_mp(p)
+        elif total_points < max_earned:
+            p.stat_points += max_earned - total_points
 
     def clamp_resources(self, p):
         self.normalize_player_stats(p)
