@@ -131,7 +131,9 @@ class RPGEngine:
                 )
             else:
                 base_dmg = st["int"] * spell["damage_mult"] * m_mult
-                crit = random.random() < min(0.3, st["sen"] * 0.005)
+                crit = random.random() < min(
+                    0.45, (st["sen"] * 0.003) + (st["int"] * 0.003)
+                )
                 p_dmg = max(1, int(base_dmg * (1.5 if crit else 1.0)))
         else:
             p_dmg = max(1, int(st["str"] * 3.0 + st["agi"] * 0.8))
@@ -139,7 +141,11 @@ class RPGEngine:
         rounds = math.ceil(mob_hp / p_dmg)
         hits = 1 if (is_magic and spell and spell.get("type") == "attack") else rounds
         total_damage = 0
-        dodge_ch = min(0.3, st["agi"] * 0.005)
+        dodge_ch = (
+            0.0
+            if (is_magic and spell and spell.get("type") == "attack")
+            else min(0.3, st["agi"] * 0.005)
+        )
 
         for _ in range(hits):
             if random.random() > dodge_ch:
@@ -214,7 +220,9 @@ class RPGEngine:
             if s_type in ["heal", "shield"]:
                 return 0, False
             base = st["int"] * spell["damage_mult"] * m_mult
-            crit = random.random() < min(0.3, st["sen"] * 0.005)
+            crit = random.random() < min(
+                0.45, (st["sen"] * 0.003) + (st["int"] * 0.003)
+            )
         else:
             base = st["str"] * 3.0
             crit = random.random() < min(0.4, st["agi"] * 0.005)
