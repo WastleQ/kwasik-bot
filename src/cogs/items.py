@@ -63,12 +63,30 @@ class ItemsCog(commands.Cog):
 
     @commands.command(name="магазин")
     async def cmd_shop(self, ctx):
-        stock = [
-            f"{i['name']} ({i['price']}💰)"
-            for i in ITEMS.values()
-            if i.get("price", 0) > 0
-        ]
-        await ctx.send("🏪 Магазин: " + " | ".join(stock))
+        potions = []
+        gear = []
+        crystals = []
+
+        for i in ITEMS.values():
+            if i.get("price", 0) <= 0:
+                continue
+            item_str = f"{i['name']} ({i['price']}💰)"
+            if i.get("type") == "use":
+                potions.append(item_str)
+            elif i.get("type") == "material":
+                crystals.append(item_str)
+            else:
+                gear.append(item_str)
+
+        lines = ["🏪 Магазин:"]
+        if potions:
+            lines.append("🧪 Расходники: " + " | ".join(potions))
+        if gear:
+            lines.append("⚔️ Экипировка: " + " | ".join(gear))
+        if crystals:
+            lines.append("💎 Кристаллы: " + " | ".join(crystals))
+
+        await ctx.send("\n".join(lines))
 
     @commands.command(name="купить")
     async def cmd_buy(self, ctx, *, name: str = ""):
