@@ -141,7 +141,8 @@ class RPGEngine:
             self.handle_death(p)
             return f"💀 @{p.username} погиб в бою с {mob_name}!", None
 
-        mob_exp = int(mob_hp * 0.4)
+        player_damage = p_dmg * hits
+        mob_exp = int(mob_hp * 0.2)
         p.exp += mob_exp
         p.gold += random.randint(30, 70) if is_boss else random.randint(10, 30)
 
@@ -190,7 +191,7 @@ class RPGEngine:
         max_hp = self.get_max_hp(p)
         max_mp = self.get_max_mp(p)
         return (
-            f"⚔️ Победа над {mob_name}! +{mob_exp} EXP. (❤️ Осталось: {p.hp}/{max_hp} HP, 🔮 {p.mp}/{max_mp} MP){crit_str}{ach_msg}"
+            f"⚔️ Победа над {mob_name}! Урон: {player_damage}. +{mob_exp} EXP. (❤️ Осталось: {p.hp}/{max_hp} HP, 🔮 {p.mp}/{max_mp} MP){crit_str}{ach_msg}"
             + (" ✨ LVL UP!" if self.check_level_up(p) else ""),
             drops,
         )
