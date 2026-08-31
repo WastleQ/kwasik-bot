@@ -120,9 +120,15 @@ class InfoCog(commands.Cog):
         msg = "🔮 Доступные заклинания: "
         spells_info = []
         for key, s in SPELLS.items():
-            spells_info.append(
-                f"{s['name']} [{key}]: {s['mp_cost']}MP (x{s['damage_mult']})"
-            )
+            if s.get("type") == "attack":
+                info = f"{s['name']} [{key}]: {s['mp_cost']}MP (x{s['damage_mult']})"
+            elif s.get("type") == "heal":
+                info = f"{s['name']} [{key}]: {s['mp_cost']}MP (+{s['heal']} HP)"
+            elif s.get("type") == "shield":
+                info = f"{s['name']} [{key}]: {s['mp_cost']}MP (+{s['shield']} Щит)"
+            else:
+                info = f"{s['name']} [{key}]: {s['mp_cost']}MP"
+            spells_info.append(info)
 
         msg += " | ".join(spells_info)
         msg += " — Используй: !охота каст [ключ]"
