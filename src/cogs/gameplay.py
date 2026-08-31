@@ -78,14 +78,8 @@ class GameplayCog(commands.Cog):
         p.hp = self.bot.engine.get_max_hp(p)
         p.mp = self.bot.engine.get_max_mp(p)
 
-        lvl_up_msg = ""
-        while p.exp >= p.lvl * 100:
-            p.exp -= p.lvl * 100
-            p.lvl += 1
-            p.stat_points += 5
-            p.hp = self.bot.engine.get_max_hp(p)
-            p.mp = self.bot.engine.get_max_mp(p)
-            lvl_up_msg = f" 🎉 УРОВЕНЬ ПОВЫШЕН ДО {p.lvl}!"
+        leveled_up = self.bot.engine.check_level_up(p)
+        lvl_up_msg = f" 🎉 УРОВЕНЬ ПОВЫШЕН ДО {p.lvl}!" if leveled_up else ""
 
         await self.bot.db.save(p)
         await ctx.send(
@@ -103,9 +97,7 @@ class GameplayCog(commands.Cog):
             remaining = int(cooldown_duration - (now - last_rest))
             mins = remaining // 60
             secs = remaining % 60
-            await ctx.send(
-                f"❌ @{p.username}, подожди еще {mins} мин {secs} сек."
-            )
+            await ctx.send(f"❌ @{p.username}, подожди еще {mins} мин {secs} сек.")
             return
 
         max_hp = self.bot.engine.get_max_hp(p)

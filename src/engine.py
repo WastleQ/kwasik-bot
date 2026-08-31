@@ -87,11 +87,16 @@ class RPGEngine:
         p.hp = max(0, p.hp)
         p.mp = max(0, p.mp)
 
+    def get_exp_required(self, lvl):
+        base = lvl * 100
+        return base * 2 if lvl >= 100 else base
+
     def check_level_up(self, p):
         up = False
-        while p.exp >= p.lvl * 100:
+        while p.exp >= self.get_exp_required(p.lvl):
+            req = self.get_exp_required(p.lvl)
             p.lvl += 1
-            p.exp -= (p.lvl - 1) * 100
+            p.exp -= req
             p.stat_points += 5
             p.hp = self.get_max_hp(p)
             p.mp = self.get_max_mp(p)

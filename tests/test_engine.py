@@ -31,6 +31,16 @@ def test_check_level_up():
     assert player.stat_points == 5
 
 
+def test_level_up_over_100():
+    engine = RPGEngine()
+    assert engine.get_exp_required(99) == 99 * 100
+    assert engine.get_exp_required(100) == 100 * 100 * 2
+    player = Player(username="test", lvl=100, exp=20000)
+    leveled_up = engine.check_level_up(player)
+    assert leveled_up is True
+    assert player.lvl == 101
+
+
 def test_achievements_and_titles():
     engine = RPGEngine()
     player = Player(username="test", gold=100, title="shadow_monarch")
