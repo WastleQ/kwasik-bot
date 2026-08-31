@@ -3,6 +3,7 @@ import time
 
 from twitchio.ext import commands
 
+from src.config import ADMINS
 from src.data import DUNGEONS, ITEMS, SPELLS
 
 
@@ -25,6 +26,7 @@ class GameplayCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.rest_cooldowns = {}
+        self.hunt_cooldowns = {}
 
     @commands.command(name="квест")
     async def cmd_quest(self, ctx):
@@ -132,6 +134,13 @@ class GameplayCog(commands.Cog):
     @commands.command(name="охота")
     async def cmd_hunt(self, ctx, action: str = "", spell_key: str = "шар"):
         p = await self.bot.get_player(ctx.author.name)
+        now = time.time()
+        is_admin = p.username.lower() in [a.lower() for a in ADMINS]
+        last_hunt = self.hunt_cooldowns.get(p.username, 0)
+        if not is_admin and now - last_hunt < 10:
+            return
+        self.hunt_cooldowns[p.username] = now
+
         if p.location_id == "0":
             await ctx.send("🏘️ Ты в городе. Используй !переход [ID]")
             return
