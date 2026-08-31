@@ -1,20 +1,21 @@
 import asyncio
 import importlib
+import logging
 import os
 import random
 import time
 
-from dotenv import load_dotenv
 from twitchio.ext import commands, routines
 
+from src.config import ADMINS, CHANNEL, TWITCH_TOKEN
 from src.data import ITEMS, RAID_BOSSES
 from src.engine import RPGEngine
 from src.models import DBManager, Player
 
-load_dotenv()
-TOKEN = os.getenv("TWITCH_TOKEN")
-CHANNEL = "akseniyy"
-ADMINS = ["wastle_", "akseniyy", "kwasik67"]
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+)
+logger = logging.getLogger("KwasikBot")
 
 
 class SoloLevelingBot(commands.Bot):
@@ -22,7 +23,10 @@ class SoloLevelingBot(commands.Bot):
         self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
         super().__init__(
-            token=TOKEN, prefix="!", initial_channels=[CHANNEL], loop=self._loop
+            token=TWITCH_TOKEN,
+            prefix="!",
+            initial_channels=[CHANNEL],
+            loop=self._loop,
         )
 
         self.db = DBManager()
@@ -60,7 +64,7 @@ class SoloLevelingBot(commands.Bot):
 
     async def event_ready(self):
         await self.db.init_db()
-        print(f"🔥 Охотник {self.nick} в сети!")
+        logger.info(f"🔥 Охотник {self.nick} в сети!")
         self.raid_aoe_task.start()
         self.regen_task.start()
         self.red_gate_task.start()
@@ -152,7 +156,7 @@ class SoloLevelingBot(commands.Bot):
             isinstance(error, TypeError) and "CommandNotFound" in str(error)
         ):
             return
-        print(f"⚠️ Ошибка: {error}")
+        logger.warning(f"⚠️ Ошибка: {error}")
 
     async def get_player(self, username: str):
         username = username.lower().replace("@", "")

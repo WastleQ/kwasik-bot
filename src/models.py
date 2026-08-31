@@ -1,8 +1,9 @@
-import os
 from dataclasses import asdict, dataclass
 
 import aiosqlite
 import asyncpg
+
+from src.config import DATABASE_URL
 
 
 @dataclass
@@ -35,12 +36,13 @@ class Player:
 class DBManager:
     def __init__(self, db_path="solo_leveling.db"):
         self.path = db_path
-        self.database_url = os.getenv("DATABASE_URL")
+        self.database_url = DATABASE_URL
+        self.pool: asyncpg.Pool | None = None
 
     async def init_db(self):
         if self.database_url:
-            conn = await asyncpg.connect(self.database_url)
-            try:
+            self.pool = await asyncpg.create_pool(self.database_url)
+            async with self.pool.acquire() as conn:
                 await conn.execute("""CREATE TABLE IF NOT EXISTS players 
                     (username TEXT PRIMARY KEY, lvl INT, exp INT, stat_points INT, 
                      str_stat INT, agi INT, vit INT, int_stat INT, sen INT, 
@@ -69,8 +71,6 @@ class DBManager:
                 await conn.execute(
                     "ALTER TABLE players ADD COLUMN IF NOT EXISTS daily_quest_progress INT DEFAULT 0"
                 )
-            finally:
-                await conn.close()
         else:
             async with aiosqlite.connect(self.path) as conn:
                 await conn.execute("""CREATE TABLE IF NOT EXISTS players 
@@ -115,14 +115,11 @@ class DBManager:
 
     async def load(self, name: str) -> Player | None:
         if self.database_url:
-            conn = await asyncpg.connect(self.database_url)
-            try:
+            async with self.pool.acquire() as conn:
                 row = await conn.fetchrow(
                     "SELECT * FROM players WHERE username=$1", name.lower()
                 )
                 return Player(**dict(row)) if row else None
-            finally:
-                await conn.close()
         else:
             async with aiosqlite.connect(self.path) as conn:
                 conn.row_factory = aiosqlite.Row
@@ -144,11 +141,8 @@ class DBManager:
             cols_str = ", ".join(cols)
             placeholders = ", ".join([f"${i + 1}" for i in range(len(vals))])
             query = f"INSERT INTO players ({cols_str}) VALUES ({placeholders}) ON CONFLICT (username) DO UPDATE SET {set_str}"
-            conn = await asyncpg.connect(self.database_url)
-            try:
+            async with self.pool.acquire() as conn:
                 await conn.execute(query, *vals)
-            finally:
-                await conn.close()
         else:
             async with aiosqlite.connect(self.path) as conn:
                 d = asdict(p)
@@ -162,12 +156,9 @@ class DBManager:
 
     async def get_all_players(self) -> list[Player]:
         if self.database_url:
-            conn = await asyncpg.connect(self.database_url)
-            try:
+            async with self.pool.acquire() as conn:
                 rows = await conn.fetch("SELECT * FROM players")
                 return [Player(**dict(r)) for r in rows]
-            finally:
-                await conn.close()
         else:
             async with aiosqlite.connect(self.path) as conn:
                 conn.row_factory = aiosqlite.Row
@@ -177,15 +168,12 @@ class DBManager:
 
     async def add_to_inventory(self, u: str, i: str):
         if self.database_url:
-            conn = await asyncpg.connect(self.database_url)
-            try:
+            async with self.pool.acquire() as conn:
                 await conn.execute(
                     "INSERT INTO inventory (username, item_id) VALUES ($1, $2)",
                     u.lower(),
                     i,
                 )
-            finally:
-                await conn.close()
         else:
             async with aiosqlite.connect(self.path) as conn:
                 await conn.execute(
@@ -195,15 +183,12 @@ class DBManager:
 
     async def remove_from_inventory(self, u: str, i: str):
         if self.database_url:
-            conn = await asyncpg.connect(self.database_url)
-            try:
+            async with self.pool.acquire() as conn:
                 await conn.execute(
                     "DELETE FROM inventory WHERE ctid = (SELECT ctid FROM inventory WHERE username=$1 AND item_id=$2 LIMIT 1)",
                     u.lower(),
                     i,
                 )
-            finally:
-                await conn.close()
         else:
             async with aiosqlite.connect(self.path) as conn:
                 await conn.execute(
@@ -214,14 +199,11 @@ class DBManager:
 
     async def get_inventory(self, u: str) -> list[str]:
         if self.database_url:
-            conn = await asyncpg.connect(self.database_url)
-            try:
+            async with self.pool.acquire() as conn:
                 rows = await conn.fetch(
                     "SELECT item_id FROM inventory WHERE username=$1", u.lower()
                 )
                 return [r["item_id"] for r in rows]
-            finally:
-                await conn.close()
         else:
             async with (
                 aiosqlite.connect(self.path) as conn,
@@ -234,15 +216,12 @@ class DBManager:
 
     async def get_top_players(self, limit=5) -> list[Player]:
         if self.database_url:
-            conn = await asyncpg.connect(self.database_url)
-            try:
+            async with self.pool.acquire() as conn:
                 rows = await conn.fetch(
                     "SELECT * FROM players ORDER BY lvl DESC, exp DESC LIMIT $1",
                     limit,
                 )
                 return [Player(**dict(r)) for r in rows]
-            finally:
-                await conn.close()
         else:
             async with aiosqlite.connect(self.path) as conn:
                 conn.row_factory = aiosqlite.Row
@@ -255,15 +234,12 @@ class DBManager:
 
     async def get_top_pvp_players(self, limit=5) -> list[Player]:
         if self.database_url:
-            conn = await asyncpg.connect(self.database_url)
-            try:
+            async with self.pool.acquire() as conn:
                 rows = await conn.fetch(
                     "SELECT * FROM players ORDER BY pvp_wins DESC LIMIT $1",
                     limit,
                 )
                 return [Player(**dict(r)) for r in rows]
-            finally:
-                await conn.close()
         else:
             async with aiosqlite.connect(self.path) as conn:
                 conn.row_factory = aiosqlite.Row
@@ -276,14 +252,11 @@ class DBManager:
 
     async def get_top_gold_players(self, limit=5) -> list[Player]:
         if self.database_url:
-            conn = await asyncpg.connect(self.database_url)
-            try:
+            async with self.pool.acquire() as conn:
                 rows = await conn.fetch(
                     "SELECT * FROM players ORDER BY gold DESC LIMIT $1", limit
                 )
                 return [Player(**dict(r)) for r in rows]
-            finally:
-                await conn.close()
         else:
             async with aiosqlite.connect(self.path) as conn:
                 conn.row_factory = aiosqlite.Row
