@@ -58,7 +58,27 @@ class RPGEngine:
         p.hp = max(1, int(self.get_max_hp(p) * 0.1))
         p.mp = max(0, int(self.get_max_mp(p) * 0.1))
 
+    def normalize_player_stats(self, p):
+        max_earned = max(0, (p.lvl - 1) * 5)
+        current_spent = (
+            (p.str_stat - 10)
+            + (p.agi - 10)
+            + (p.vit - 10)
+            + (p.int_stat - 10)
+            + (p.sen - 10)
+        )
+        if current_spent + p.stat_points > max_earned:
+            p.str_stat = 10
+            p.agi = 10
+            p.vit = 10
+            p.int_stat = 10
+            p.sen = 10
+            p.stat_points = max_earned
+            p.hp = self.get_max_hp(p)
+            p.mp = self.get_max_mp(p)
+
     def clamp_resources(self, p):
+        self.normalize_player_stats(p)
         p.hp = min(p.hp, self.get_max_hp(p))
         p.mp = min(p.mp, self.get_max_mp(p))
         p.hp = max(0, p.hp)
