@@ -104,7 +104,7 @@ class GameplayCog(commands.Cog):
             mins = remaining // 60
             secs = remaining % 60
             await ctx.send(
-                f"❌ @{p.username}, отдыхать можно раз в 10 минут! Подожди еще {mins} мин {secs} сек."
+                f"❌ @{p.username}, подожди еще {mins} мин {secs} сек."
             )
             return
 
