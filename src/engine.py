@@ -89,7 +89,8 @@ class RPGEngine:
 
     def get_exp_required(self, lvl):
         base = lvl * 100
-        return base * 2 if lvl >= 100 else base
+        tier = lvl // 100
+        return base * (2**tier)
 
     def check_level_up(self, p):
         up = False
