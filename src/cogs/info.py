@@ -10,7 +10,7 @@ class InfoCog(commands.Cog):
     @commands.command(name="команды")
     async def cmd_help(self, ctx):
         await ctx.send(
-            "📜 Доступные команды: !профиль !статы !кач !квест !награда !охота !отдых !войти !крафты !крафт !заклинания !достижения !титулы !титул !инвентарь !надеть !снять !пить !магазин !купить !продать !передать !пати !врата !переход !дуэль !принять !отклонить !рейд !атака !топ !топ_золото !гит"
+            "📜 Доступные команды: !профиль !статы !кач !квест !награда !охота !отдых !войти !крафты !крафт !заклинания !достижения !титулы !титул !инвентарь !надеть !снять !пить !магазин !купить !продать !передать !пати !врата !переход !дуэль !принять !отклонить !рейд !атака !топ !тоp_золото !гит !правила"
         )
 
     @commands.command(name="помощь")
@@ -26,6 +26,12 @@ class InfoCog(commands.Cog):
     @commands.command(name="git")
     async def cmd_git_alias(self, ctx):
         await self.cmd_git(ctx)
+
+    @commands.command(name="правила", aliases=["rules"])
+    async def cmd_rules(self, ctx):
+        await ctx.send(
+            "📜 Правила, формулы и подробный справочник (Wiki): https://github.com/WastleQ/kwasik-bot/blob/main/wiki.md"
+        )
 
     @commands.command(name="статы")
     async def cmd_stats(self, ctx):

@@ -187,8 +187,8 @@ class RPGEngine:
         if c_drop:
             drops.append(c_drop)
 
-        crit_str = (
-            " 🔥 КРИТИЧЕСКИЙ УДАР МАГИИ!"
+        crit_label = (
+            " крит."
             if (
                 is_magic
                 and spell
@@ -201,7 +201,7 @@ class RPGEngine:
         max_hp = self.get_max_hp(p)
         max_mp = self.get_max_mp(p)
         return (
-            f"⚔️ Победа над {mob_name}! Урон: {player_damage}. +{mob_exp} EXP. (❤️ Осталось: {p.hp}/{max_hp} HP, 🔮 {p.mp}/{max_mp} MP){crit_str}{ach_msg}"
+            f"⚔️ Победа над {mob_name}! Урон: {player_damage}{crit_label}. +{mob_exp} EXP. (❤️ Осталось: {p.hp}/{max_hp} HP, 🔮 {p.mp}/{max_mp} MP){ach_msg}"
             + (" ✨ LVL UP!" if self.check_level_up(p) else ""),
             drops,
         )

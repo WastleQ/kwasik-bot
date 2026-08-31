@@ -142,6 +142,7 @@ class GameplayCog(commands.Cog):
             p.mp -= spell["mp_cost"]
 
         msg, drops = self.bot.engine.fight(p, DUNGEONS[p.location_id], is_magic, spell)
+        msg = f"@{p.username} {msg}"
         if drops:
             drop_names = []
             for drop in drops:
@@ -228,4 +229,4 @@ class GameplayCog(commands.Cog):
             p.mp = self.bot.engine.get_max_mp(p)
 
         await self.bot.db.save(p)
-        await ctx.send(f"✅ Характеристика {stat} увеличена на {count}!")
+        await ctx.send(f"✅ @{p.username}, характеристика {stat} увеличена на {count}!")
