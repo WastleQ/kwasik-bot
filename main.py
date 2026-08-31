@@ -1,10 +1,7 @@
 import asyncio
-import http.server
 import importlib
 import os
 import random
-import socketserver
-import threading
 import time
 
 from dotenv import load_dotenv
@@ -18,24 +15,6 @@ load_dotenv()
 TOKEN = os.getenv("TWITCH_TOKEN")
 CHANNEL = "akseniyy"
 ADMINS = ["wastle_", "akseniyy", "kwasik67"]
-
-
-def run_dummy_server():
-    port = int(os.getenv("PORT", "10000"))
-
-    class HealthCheckHandler(http.server.SimpleHTTPRequestHandler):
-        def do_GET(self):
-            self.send_response(200)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            self.wfile.write(b"Kwasik Bot is alive!")
-
-        def log_message(self, format, *args):
-            pass
-
-    with socketserver.TCPServer(("", port), HealthCheckHandler) as httpd:
-        print(f"🌐 Dummy HTTP server running on port {port}")
-        httpd.serve_forever()
 
 
 class SoloLevelingBot(commands.Bot):
@@ -57,6 +36,7 @@ class SoloLevelingBot(commands.Bot):
         self.party_invites = {}
         self.player_party = {}
         self.user_cooldowns = {}
+        self._first_red_gate_check = True
 
         self.load_extensions()
 
@@ -92,6 +72,9 @@ class SoloLevelingBot(commands.Bot):
             await ctx.send("🚨 Красные Врата принудительно открыты!")
 
     async def _red_gate_spawn_logic(self):
+        if self._first_red_gate_check:
+            self._first_red_gate_check = False
+            return
         if random.random() < 0.5:
             await self._spawn_red_gate()
 
@@ -220,5 +203,4 @@ class SoloLevelingBot(commands.Bot):
 
 
 if __name__ == "__main__":
-    threading.Thread(target=run_dummy_server, daemon=True).start()
     SoloLevelingBot().run()
