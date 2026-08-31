@@ -18,8 +18,23 @@ class ItemsCog(commands.Cog):
             if tid in ITEMS:
                 name = ITEMS[tid]["name"]
                 counts[name] = counts.get(name, 0) + 1
-        disp = [f"{n} (x{c})" if c > 1 else n for n, c in counts.items()]
-        await ctx.send("🎒 Инвентарь: " + ", ".join(disp))
+
+        items_list = [f"{n} (x{c})" if c > 1 else n for n, c in counts.items()]
+        base_msg = "🎒 Инвентарь: "
+        msg = base_msg
+        truncated = False
+
+        for item in items_list:
+            addition = (", " if msg != base_msg else "") + item
+            if len(msg) + len(addition) > 460:
+                truncated = True
+                break
+            msg += addition
+
+        if truncated:
+            msg += " ... (и др.)"
+
+        await ctx.send(msg)
 
     @commands.command(name="надеть")
     async def cmd_equip(self, ctx, *, name: str = ""):
