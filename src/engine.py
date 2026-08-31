@@ -39,7 +39,7 @@ class RPGEngine:
         return 100 + (self.get_stats(p)["vit"] * 15)
 
     def get_max_mp(self, p):
-        return 150 + (self.get_stats(p)["int"] * 10)
+        return 150 + (self.get_stats(p)["int"] * 5)
 
     def get_rank(self, lvl):
         ranks = {10: "E", 20: "D", 30: "C", 40: "B", 50: "A"}

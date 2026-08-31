@@ -9,7 +9,7 @@ def test_get_stats_and_max_hp():
     assert stats["str"] == 15
     assert stats["vit"] == 20
     assert engine.get_max_hp(player) == 100 + (20 * 15)
-    assert engine.get_max_mp(player) == 150 + (10 * 10)
+    assert engine.get_max_mp(player) == 150 + (10 * 5)
 
 
 def test_get_rank():
