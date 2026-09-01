@@ -42,6 +42,10 @@ class SoloLevelingBot(commands.Bot):
         self.user_cooldowns = {}
         self._first_red_gate_check = True
 
+        self.raid_aoe_task = routines.routine(minutes=5)(self._raid_aoe_logic)
+        self.regen_task = routines.routine(minutes=3)(self._passive_regen_logic)
+        self.red_gate_task = routines.routine(minutes=45)(self._red_gate_spawn_logic)
+
         self.load_extensions()
 
     async def close(self):
@@ -49,10 +53,6 @@ class SoloLevelingBot(commands.Bot):
             await super().close()
         except AttributeError:
             pass
-
-        self.raid_aoe_task = routines.routine(minutes=5)(self._raid_aoe_logic)
-        self.regen_task = routines.routine(minutes=3)(self._passive_regen_logic)
-        self.red_gate_task = routines.routine(minutes=45)(self._red_gate_spawn_logic)
 
     def load_extensions(self):
         cogs_dir = os.path.join("src", "cogs")
