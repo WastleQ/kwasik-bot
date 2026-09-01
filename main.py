@@ -44,6 +44,12 @@ class SoloLevelingBot(commands.Bot):
 
         self.load_extensions()
 
+    async def close(self):
+        try:
+            await super().close()
+        except AttributeError:
+            pass
+
         self.raid_aoe_task = routines.routine(minutes=5)(self._raid_aoe_logic)
         self.regen_task = routines.routine(minutes=3)(self._passive_regen_logic)
         self.red_gate_task = routines.routine(minutes=45)(self._red_gate_spawn_logic)
