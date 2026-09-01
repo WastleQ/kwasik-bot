@@ -153,9 +153,9 @@ class RPGEngine:
                 )
             elif s_type == "shield":
                 shield_val = spell.get("shield", 150) + int(st["int"] * 1.5)
-                p.hp = min(self.get_max_hp(p) + shield_val, p.hp + shield_val)
+                p.shield += shield_val
                 return (
-                    f"🛡️ @{p.username} создает Магический щит (+{shield_val} прочности)!",
+                    f"🛡️ @{p.username} создает Магический щит (+{shield_val} прочности, всего: {p.shield})!",
                     None,
                 )
             else:
@@ -181,8 +181,17 @@ class RPGEngine:
                 dmg = random.randint(dungeon["min_dmg"], dungeon["max_dmg"])
                 total_damage += max(1, dmg - int(st["vit"] * 0.7))
 
+        if p.shield > 0:
+            if total_damage <= p.shield:
+                p.shield -= total_damage
+                total_damage = 0
+            else:
+                total_damage -= p.shield
+                p.shield = 0
+
         p.hp -= total_damage
         if p.hp <= 0:
+            p.shield = 0
             self.handle_death(p)
             return f"💀 @{p.username} погиб в бою с {mob_name}!", None
 
@@ -235,8 +244,9 @@ class RPGEngine:
         )
         max_hp = self.get_max_hp(p)
         max_mp = self.get_max_mp(p)
+        shield_info = f" (+{p.shield} щит)" if p.shield > 0 else ""
         return (
-            f"⚔️ Победа над {mob_name}! Урон: {player_damage}{crit_label}. +{mob_exp} EXP. (❤️ Осталось: {p.hp}/{max_hp} HP, 🔮 {p.mp}/{max_mp} MP){ach_msg}"
+            f"⚔️ Победа над {mob_name}! Урон: {player_damage}{crit_label}. +{mob_exp} EXP. (❤️ Осталось: {p.hp}{shield_info}/{max_hp} HP, 🔮 {p.mp}/{max_mp} MP){ach_msg}"
             + (" ✨ LVL UP!" if self.check_level_up(p) else ""),
             drops,
         )

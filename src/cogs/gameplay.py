@@ -231,11 +231,12 @@ class GameplayCog(commands.Cog):
             )
         elif s_type == "shield":
             shield_val = spell.get("shield", 150) + int(st["int"] * 1.5)
+            p.shield += shield_val
             max_hp = self.bot.engine.get_max_hp(p)
-            p.hp = min(max_hp + shield_val, p.hp + shield_val)
+            shield_str = f" (+{p.shield} щит)" if p.shield > 0 else ""
             await self.bot.db.save(p)
             await ctx.send(
-                f"🛡️ @{p.username} создает Магический щит (+{shield_val} прочности)! (❤️ {p.hp}/{max_hp} HP, 🔮 {p.mp}/{self.bot.engine.get_max_mp(p)} MP)"
+                f"🛡️ @{p.username} создает Магический щит (+{shield_val} прочности)! (❤️ {p.hp}{shield_str}/{max_hp} HP, 🔮 {p.mp}/{self.bot.engine.get_max_mp(p)} MP)"
             )
         else:
             p.mp += spell["mp_cost"]

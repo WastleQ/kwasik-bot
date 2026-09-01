@@ -52,8 +52,10 @@ class InfoCog(commands.Cog):
             if p.accessory_id and p.accessory_id in ITEMS
             else "Пусто"
         )
+        shield_str = f"(+{p.shield})" if p.shield > 0 else ""
+        hp_display = f"{p.hp}{shield_str}"
         await ctx.send(
-            f"@{p.username} [{rank}] | Ур. {p.lvl} | Титул: {title_name} | HP: {p.hp}/{self.bot.engine.get_max_hp(p)} | MP: {p.mp}/{self.bot.engine.get_max_mp(p)} | {p.gold} 💰 | AP: {p.stat_points}\n"
+            f"@{p.username} [{rank}] | Ур. {p.lvl} | Титул: {title_name} | HP: {hp_display}/{self.bot.engine.get_max_hp(p)} | MP: {p.mp}/{self.bot.engine.get_max_mp(p)} | {p.gold} 💰 | AP: {p.stat_points}\n"
             f"⚔️ Оружие: {w_name} | 🛡️ Броня: {a_name} | 💍 Аксессуар: {acc_name}\n"
             f"📊 Характеристики: STR {st['str']} AGI {st['agi']} VIT {st['vit']} INT {st['int']} SEN {st['sen']}"
         )

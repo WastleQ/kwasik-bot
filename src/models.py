@@ -31,6 +31,7 @@ class Player:
     daily_quest_loc: str = "1"
     daily_quest_target: int = 3
     daily_quest_progress: int = 0
+    shield: int = 0
 
 
 class DBManager:
@@ -49,7 +50,7 @@ class DBManager:
                      hp INT, mp INT, gold INT, location_id TEXT,
                      weapon_id TEXT, armor_id TEXT, accessory_id TEXT, last_daily TEXT,
                      title TEXT DEFAULT 'novice', achievements TEXT DEFAULT '', pvp_wins INT DEFAULT 0,
-                     daily_quest_loc TEXT DEFAULT '1', daily_quest_target INT DEFAULT 3, daily_quest_progress INT DEFAULT 0)""")
+                     daily_quest_loc TEXT DEFAULT '1', daily_quest_target INT DEFAULT 3, daily_quest_progress INT DEFAULT 0, shield INT DEFAULT 0)""")
                 await conn.execute(
                     "CREATE TABLE IF NOT EXISTS inventory (username TEXT, item_id TEXT)"
                 )
@@ -71,6 +72,9 @@ class DBManager:
                 await conn.execute(
                     "ALTER TABLE players ADD COLUMN IF NOT EXISTS daily_quest_progress INT DEFAULT 0"
                 )
+                await conn.execute(
+                    "ALTER TABLE players ADD COLUMN IF NOT EXISTS shield INT DEFAULT 0"
+                )
         else:
             async with aiosqlite.connect(self.path) as conn:
                 await conn.execute("""CREATE TABLE IF NOT EXISTS players 
@@ -79,7 +83,7 @@ class DBManager:
                      hp INT, mp INT, gold INT, location_id TEXT,
                      weapon_id TEXT, armor_id TEXT, accessory_id TEXT, last_daily TEXT,
                      title TEXT DEFAULT 'novice', achievements TEXT DEFAULT '', pvp_wins INT DEFAULT 0,
-                     daily_quest_loc TEXT DEFAULT '1', daily_quest_target INT DEFAULT 3, daily_quest_progress INT DEFAULT 0)""")
+                     daily_quest_loc TEXT DEFAULT '1', daily_quest_target INT DEFAULT 3, daily_quest_progress INT DEFAULT 0, shield INT DEFAULT 0)""")
                 await conn.execute(
                     "CREATE TABLE IF NOT EXISTS inventory (username TEXT, item_id TEXT)"
                 )
@@ -109,6 +113,10 @@ class DBManager:
                     if "daily_quest_progress" not in columns:
                         await conn.execute(
                             "ALTER TABLE players ADD COLUMN daily_quest_progress INT DEFAULT 0"
+                        )
+                    if "shield" not in columns:
+                        await conn.execute(
+                            "ALTER TABLE players ADD COLUMN shield INT DEFAULT 0"
                         )
 
                 await conn.commit()
