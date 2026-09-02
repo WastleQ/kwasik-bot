@@ -59,11 +59,11 @@ DUNGEONS = {
     "6": {
         "name": "Остров Чеджу (Ранг S)",
         "mobs": [
-            ("Мутант-муравей", 10000, False),
-            ("Король Муравьев (БОСС)", 50000, True),
+            ("Мутант-муравей", 5000, False),
+            ("Король Муравьев (БОСС)", 15000, True),
         ],
-        "min_dmg": 500,
-        "max_dmg": 1000,
+        "min_dmg": 300,
+        "max_dmg": 900,
         "boss_drop": "amulet_of_wisdom",
         "mob_drop": "knight_spear",
     },
