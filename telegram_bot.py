@@ -144,7 +144,7 @@ async def gates_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def travel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    args = context.args
+    args = context.args or [] or []
     if not args or args[0] not in DUNGEONS:
         await update.message.reply_text(
             "❌ Укажите верный ID врат. Пример: `/travel 1` (используй `/gates`)",
@@ -173,7 +173,7 @@ async def hunt_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    args = context.args
+    args = context.args or []
     is_magic = len(args) > 0 and args[0].lower() == "каст"
     spell_key = args[1].lower() if is_magic and len(args) > 1 else "шар"
     spell = SPELLS.get(spell_key) if is_magic else None
@@ -212,7 +212,7 @@ async def hunt_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    args = context.args
+    args = context.args or []
     if not args:
         await update.message.reply_text(
             f"❌ Укажи заклинание. Доступны: {', '.join(SPELLS.keys())}",
@@ -267,7 +267,7 @@ async def cast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def upgrade_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    args = context.args
+    args = context.args or []
     if not args:
         await update.message.reply_text(
             "❓ Использование: `/upgrade <сила/agi/vit/int/sen> [кол-во]`",
