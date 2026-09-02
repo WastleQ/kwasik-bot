@@ -3,7 +3,13 @@ import logging
 import os
 
 from dotenv import load_dotenv
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
+from telegram import (
+    BotCommand,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Update,
+    WebAppInfo,
+)
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 from src.data import DUNGEONS, ITEMS, SPELLS
@@ -41,7 +47,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await get_telegram_player(update)
 
     keyboard = []
-    if WEB_APP_URL and WEB_APP_URL.startswith("https://"):
+    if (
+        WEB_APP_URL
+        and WEB_APP_URL.startswith("https://")
+        and "localhost" not in WEB_APP_URL
+    ):
         keyboard.append(
             [
                 InlineKeyboardButton(
@@ -317,12 +327,26 @@ async def inventory_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def post_init(application):
+    commands = [
+        BotCommand("stats", "📊 Профиль и характеристики"),
+        BotCommand("gates", "🚪 Доступные врата"),
+        BotCommand("travel", "🚀 Войти во врата (ID)"),
+        BotCommand("hunt", "⚔️ Охота на монстров"),
+        BotCommand("cast", "✨ Использовать магию"),
+        BotCommand("upgrade", "💪 Прокачка статов (AP)"),
+        BotCommand("rest", "🏕️ Отдых и восстановление HP/MP"),
+        BotCommand("inventory", "🎒 Инвентарь"),
+    ]
+    await application.bot.set_my_commands(commands)
+
+
 def main():
     if not TOKEN:
         logger.error("❌ Telegram Bot Token not found!")
         return
 
-    application = ApplicationBuilder().token(TOKEN).build()
+    application = ApplicationBuilder().token(TOKEN).post_init(post_init).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("stats", stats_command))
