@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kwasik RPG - Solo Leveling</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --danger: #ef4444;
+            --success: #22c55e;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+            margin-bottom: 4px;
+        }
+        .username {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #60a5fa;
+        }
+        .rank-badge {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        .bars {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 10px 0;
+        }
+        .bar-container {
+            background: #020617;
+            border-radius: 6px;
+            height: 18px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .bar-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .hp-fill { background: var(--danger); }
+        .mp-fill { background: var(--accent); }
+        .bar-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: bold;
+            line-height: 18px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        .stat-box {
+            background: #0f172a;
+            padding: 8px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+            transition: opacity 0.2s, transform 0.1s;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+        .btn-secondary {
+            background: #334155;
+            box-shadow: none;
+        }
+        .actions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .log-box {
+            background: #020617;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            min-height: 80px;
+            max-height: 150px;
+            overflow-y: auto;
+            color: #38bdf8;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        select {
+            width: 100%;
+            background: #0f172a;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+        .inventory-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+        .item-tag {
+            background: #0f172a;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Player Profile Card -->
+        <div class="card">
+            <header>
+                <div id="username" class="username">Охотник...</div>
+                <div id="rank" class="rank-badge">E</div>
+            </header>
+            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: var(--text-muted);">
+                <span id="lvl">Уровень: 1</span>
+                <span id="gold">💰 100</span>
+            </div>
+            
+            <div class="bars">
+                <div class="bar-container">
+                    <div id="hp-fill" class="bar-fill hp-fill" style="width: 100%;"></div>
+                    <div id="hp-text" class="bar-text">HP: 250/250</div>
+                </div>
+                <div class="bar-container">
+                    <div id="mp-fill" class="bar-fill mp-fill" style="width: 100%;"></div>
+                    <div id="mp-text" class="bar-text">MP: 150/150</div>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-box">STR: <span id="st-str">10</span></div>
+                <div class="stat-box">AGI: <span id="st-agi">10</span></div>
+                <div class="stat-box">VIT: <span id="st-vit">10</span></div>
+                <div class="stat-box">INT: <span id="st-int">10</span></div>
+                <div class="stat-box">SEN: <span id="st-sen">10</span></div>
+                <div class="stat-box">AP: <span id="st-ap">0</span></div>
+            </div>
+        </div>
+
+        <!-- Location & Travel -->
+        <div class="card">
+            <div style="margin-bottom: 6px; font-size: 0.9rem; color: var(--text-muted);">Локация: <span id="loc-name" style="color: white; font-weight: bold;">Город</span></div>
+            <select id="dungeon-select" onchange="travelLocation()">
+                <option value="0">Город</option>
+            </select>
+        </div>
+
+        <!-- Actions -->
+        <div class="card">
+            <div class="actions-grid">
+                <button class="btn" onclick="hunt('')">🗡️ Охота</button>
+                <button class="btn" onclick="hunt('каст', 'шар')">🔥 Огн. шар</button>
+                <button class="btn" onclick="hunt('каст', 'молния')">⚡ Молния</button>
+                <button class="btn" onclick="hunt('каст', 'метеор')">☄️ Метеор</button>
+            </div>
+            <div style="margin-top: 8px;">
+                <button class="btn btn-secondary" onclick="rest()">🏕️ Отдых (Восстановить силы)</button>
+            </div>
+        </div>
+
+        <!-- Combat Log -->
+        <div class="card">
+            <div style="font-size: 0.9rem; margin-bottom: 6px; color: var(--text-muted);">Лог Системы:</div>
+            <div id="log-box" class="log-box">Добро пожаловать в Kwasik RPG, Охотник. Выберите врата и начните охоту!</div>
+        </div>
+
+        <!-- Inventory -->
+        <div class="card">
+            <div style="font-size: 0.9rem; margin-bottom: 6px; color: var(--text-muted);">Инвентарь:</div>
+            <div id="inventory-list" class="inventory-list">
+                <span style="color: var(--text-muted); font-size: 0.85rem;">Пусто</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Get username from Telegram user or fallback to query param or default
+        let username = "wastle_";
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            username = tg.initDataUnsafe.user.username || tg.initDataUnsafe.user.first_name || "wastle_";
+        }
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has("user")) {
+            username = urlParams.get("user");
+        }
+
+        async function loadProfile() {
+            try {
+                const res = await fetch(`/api/player/${username}`);
+                const data = await res.json();
+                updateUI(data);
+            } catch (e) {
+                log("Ошибка загрузки профиля: " + e);
+            }
+        }
+
+        function updateUI(data) {
+            document.getElementById("username").innerText = `@${data.username}`;
+            document.getElementById("rank").innerText = data.rank;
+            document.getElementById("lvl").innerText = `Уровень: ${data.lvl}`;
+            document.getElementById("gold").innerText = `💰 ${data.gold}`;
+            
+            // HP Bar
+            let hpMax = data.max_hp;
+            let hpCurr = data.hp;
+            let shieldStr = data.shield > 0 ? ` (+${data.shield} щит)` : "";
+            let hpPct = Math.max(0, Math.min(100, (hpCurr / hpMax) * 100));
+            document.getElementById("hp-fill").style.width = hpPct + "%";
+            document.getElementById("hp-text").innerText = `HP: ${hpCurr}${shieldStr}/${hpMax}`;
+
+            // MP Bar
+            let mpMax = data.max_mp;
+            let mpCurr = data.mp;
+            let mpPct = Math.max(0, Math.min(100, (mpCurr / mpMax) * 100));
+            document.getElementById("mp-fill").style.width = mpPct + "%";
+            document.getElementById("mp-text").innerText = `MP: ${mpCurr}/${mpMax}`;
+
+            // Stats
+            document.getElementById("st-str").innerText = data.stats.str;
+            document.getElementById("st-agi").innerText = data.stats.agi;
+            document.getElementById("st-vit").innerText = data.stats.vit;
+            document.getElementById("st-int").innerText = data.stats.int;
+            document.getElementById("st-sen").innerText = data.stats.sen;
+            document.getElementById("st-ap").innerText = data.stat_points;
+
+            document.getElementById("loc-name").innerText = data.location_name;
+
+            // Dungeons select
+            let select = document.getElementById("dungeon-select");
+            select.innerHTML = "";
+            for (const [id, d] of Object.entries(data.dungeons)) {
+                let opt = document.createElement("option");
+                opt.value = id;
+                opt.text = d.name;
+                if (id === data.location_id) opt.selected = true;
+                select.appendChild(opt);
+            }
+
+            // Inventory
+            let invDiv = document.getElementById("inventory-list");
+            invDiv.innerHTML = "";
+            if (data.inventory.length === 0) {
+                invDiv.innerHTML = '<span style="color: var(--text-muted); font-size: 0.85rem;">Пусто</span>';
+            } else {
+                data.inventory.forEach(item => {
+                    let tag = document.createElement("div");
+                    tag.className = "item-tag";
+                    tag.innerText = item;
+                    invDiv.appendChild(tag);
+                });
+            }
+        }
+
+        async function hunt(action, spellKey) {
+            log(`⚔️ Атака...`);
+            try {
+                const res = await fetch(`/api/player/${username}/hunt`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: action, spell_key: spellKey || "шар" })
+                });
+                const data = await res.json();
+                if (data.status === "error") {
+                    log("❌ " + data.message);
+                } else {
+                    log(data.message);
+                    loadProfile();
+                }
+            } catch (e) {
+                log("Ошибка сети: " + e);
+            }
+        }
+
+        async function travelLocation() {
+            let locId = document.getElementById("dungeon-select").value;
+            try {
+                const res = await fetch(`/api/player/${username}/travel/${locId}`, { method: "POST" });
+                const data = await res.json();
+                log(`🚀 Переход в: ${data.location_name}`);
+                loadProfile();
+            } catch (e) {
+                log("Ошибка перехода: " + e);
+            }
+        }
+
+        async function rest() {
+            try {
+                const res = await fetch(`/api/player/${username}/rest`, { method: "POST" });
+                const data = await res.json();
+                log(`🏕️ ${data.message}`);
+                loadProfile();
+            } catch (e) {
+                log("Ошибка отдыха: " + e);
+            }
+        }
+
+        function log(msg) {
+            let box = document.getElementById("log-box");
+            box.innerText = msg + "\n" + box.innerText;
+        }
+
+        loadProfile();
+    </script>
+</body>
+</html>
