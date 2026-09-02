@@ -6,11 +6,17 @@ from dotenv import load_dotenv
 from telegram import (
     BotCommand,
     InlineKeyboardButton,
-    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
     Update,
     WebAppInfo,
 )
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
 
 from src.data import DUNGEONS, ITEMS, SPELLS
 from src.engine import RPGEngine
@@ -27,6 +33,13 @@ logger = logging.getLogger("TelegramBot")
 
 db = DBManager("solo_leveling.db")
 engine = RPGEngine()
+
+reply_keyboard = [
+    ["⚔️ Охота", "📊 Профиль"],
+    ["🚪 Врата", "🎒 Инвентарь"],
+    ["🏕️ Отдых", "✨ Магия (Хил/Щит)"],
+]
+main_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True)
 
 
 async def get_telegram_player(update: Update) -> Player:
@@ -61,12 +74,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ]
         )
 
-    reply_markup = InlineKeyboardMarkup(keyboard) if keyboard else None
-
+    # If web app is available, we can attach inline markup below text, and reply_markup is main_markup for bottom keyboard
     text = (
         f"🔥 Привет, Охотник **{user.first_name}**!\n\n"
         "Добро пожаловать в **Kwasik RPG** (Solo Leveling).\n"
-        "Ты можешь играть прямо здесь в чате с помощью команд:\n\n"
+        "Используй удобные кнопки внизу экрана или команды:\n\n"
         "📊 `/stats` — профиль и характеристики\n"
         "🚪 `/gates` — список врат / локаций\n"
         "🚀 `/travel <id>` — войти в подземелье\n"
@@ -78,7 +90,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     await update.message.reply_text(
-        text, reply_markup=reply_markup, parse_mode="Markdown"
+        text, reply_markup=main_markup, parse_mode="Markdown"
     )
 
 
@@ -117,13 +129,17 @@ async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"• Интеллект (INT): {st['int']}\n"
         f"• Восприятие (SEN): {st['sen']}"
     )
-    await update.message.reply_text(msg, parse_mode="Markdown")
+    await update.message.reply_text(
+        msg, parse_mode="Markdown", reply_markup=main_markup
+    )
 
 
 async def gates_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     info = [f"[{i}] {d['name']}" for i, d in DUNGEONS.items()]
     await update.message.reply_text(
-        "🚪 **Доступные врата:**\n" + "\n".join(info), parse_mode="Markdown"
+        "🚪 **Доступные врата:**\n" + "\n".join(info),
+        parse_mode="Markdown",
+        reply_markup=main_markup,
     )
 
 
@@ -133,6 +149,7 @@ async def travel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "❌ Укажите верный ID врат. Пример: `/travel 1` (используй `/gates`)",
             parse_mode="Markdown",
+            reply_markup=main_markup,
         )
         return
     loc_id = args[0]
@@ -142,6 +159,7 @@ async def travel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"🚀 @{p.username} вошел в: **{DUNGEONS[loc_id]['name']}**",
         parse_mode="Markdown",
+        reply_markup=main_markup,
     )
 
 
@@ -151,6 +169,7 @@ async def hunt_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "🏘️ Ты в городе. Используй `/travel [ID]` чтобы войти во врата!",
             parse_mode="Markdown",
+            reply_markup=main_markup,
         )
         return
 
@@ -162,12 +181,14 @@ async def hunt_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if is_magic:
         if not spell:
             await update.message.reply_text(
-                f"❌ Нет такого заклинания. Доступны: {', '.join(SPELLS.keys())}"
+                f"❌ Нет такого заклинания. Доступны: {', '.join(SPELLS.keys())}",
+                reply_markup=main_markup,
             )
             return
         if p.mp < spell["mp_cost"]:
             await update.message.reply_text(
-                f"❌ Мало маны! Нужно {spell['mp_cost']} MP (у тебя {p.mp})."
+                f"❌ Мало маны! Нужно {spell['mp_cost']} MP (у тебя {p.mp}).",
+                reply_markup=main_markup,
             )
             return
         p.mp -= spell["mp_cost"]
@@ -187,26 +208,30 @@ async def hunt_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             msg += f" 💎 Находки: {', '.join(drop_names)}!"
 
     await db.save(p)
-    await update.message.reply_text(msg)
+    await update.message.reply_text(msg, reply_markup=main_markup)
 
 
 async def cast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     if not args:
         await update.message.reply_text(
-            f"❌ Укажи заклинание. Доступны: {', '.join(SPELLS.keys())}"
+            f"❌ Укажи заклинание. Доступны: {', '.join(SPELLS.keys())}",
+            reply_markup=main_markup,
         )
         return
     spell_key = args[0].lower().strip()
     spell = SPELLS.get(spell_key)
     if not spell:
-        await update.message.reply_text("❌ Нет такого заклинания.")
+        await update.message.reply_text(
+            "❌ Нет такого заклинания.", reply_markup=main_markup
+        )
         return
 
     p = await get_telegram_player(update)
     if p.mp < spell["mp_cost"]:
         await update.message.reply_text(
-            f"❌ Мало маны! Нужно {spell['mp_cost']} MP (у тебя {p.mp})."
+            f"❌ Мало маны! Нужно {spell['mp_cost']} MP (у тебя {p.mp}).",
+            reply_markup=main_markup,
         )
         return
 
@@ -220,7 +245,8 @@ async def cast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         p.hp = min(max_hp, p.hp + heal_val)
         await db.save(p)
         await update.message.reply_text(
-            f"✨ @{p.username} кастует [{spell['name']}] и восстанавливает {heal_val} HP! (❤️ {p.hp}/{max_hp} HP, 🔮 {p.mp}/{engine.get_max_mp(p)} MP)"
+            f"✨ @{p.username} кастует [{spell['name']}] и восстанавливает {heal_val} HP! (❤️ {p.hp}/{max_hp} HP, 🔮 {p.mp}/{engine.get_max_mp(p)} MP)",
+            reply_markup=main_markup,
         )
     elif s_type == "shield":
         shield_val = spell.get("shield", 150) + int(st["int"] * 1.5)
@@ -228,13 +254,15 @@ async def cast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         shield_str = f" (+{p.shield} щит)" if p.shield > 0 else ""
         await db.save(p)
         await update.message.reply_text(
-            f"🛡️ @{p.username} создает Магический щит (+{shield_val} прочности)! (❤️ {p.hp}{shield_str}/{max_hp} HP, 🔮 {p.mp}/{engine.get_max_mp(p)} MP)"
+            f"🛡️ @{p.username} создает Магический щит (+{shield_val} прочности)! (❤️ {p.hp}{shield_str}/{max_hp} HP, 🔮 {p.mp}/{engine.get_max_mp(p)} MP)",
+            reply_markup=main_markup,
         )
     else:
         p.mp += spell["mp_cost"]
         await update.message.reply_text(
             "❌ Боевые заклинания нужно использовать через `/hunt cast [spell]` во время охоты.",
             parse_mode="Markdown",
+            reply_markup=main_markup,
         )
 
 
@@ -244,6 +272,7 @@ async def upgrade_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "❓ Использование: `/upgrade <сила/agi/vit/int/sen> [кол-во]`",
             parse_mode="Markdown",
+            reply_markup=main_markup,
         )
         return
 
@@ -252,7 +281,9 @@ async def upgrade_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     p = await get_telegram_player(update)
     if p.stat_points < count or count <= 0:
-        await update.message.reply_text(f"❌ Недостаточно AP. У тебя: {p.stat_points}")
+        await update.message.reply_text(
+            f"❌ Недостаточно AP. У тебя: {p.stat_points}", reply_markup=main_markup
+        )
         return
 
     mapping = {
@@ -276,7 +307,8 @@ async def upgrade_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     attr = mapping.get(stat)
     if not attr:
         await update.message.reply_text(
-            "❓ Выбери: сила (str), ловкость (agi), живучесть (vit), инт (int), восприятие (sen)"
+            "❓ Выбери: сила (str), ловкость (agi), живучесть (vit), инт (int), восприятие (sen)",
+            reply_markup=main_markup,
         )
         return
 
@@ -288,6 +320,7 @@ async def upgrade_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"✅ @{p.username}, характеристика `{stat.upper()}` увеличена на {count}! Осталось AP: {p.stat_points}",
         parse_mode="Markdown",
+        reply_markup=main_markup,
     )
 
 
@@ -299,7 +332,8 @@ async def rest_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     p.mp = max_mp
     await db.save(p)
     await update.message.reply_text(
-        f"🏕️ @{p.username} отдохнул и полностью восстановил HP ({max_hp}) и MP ({max_mp})!"
+        f"🏕️ @{p.username} отдохнул и полностью восстановил HP ({max_hp}) и MP ({max_mp})!",
+        reply_markup=main_markup,
     )
 
 
@@ -307,7 +341,9 @@ async def inventory_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     p = await get_telegram_player(update)
     inv = await db.get_inventory(p.username)
     if not inv:
-        await update.message.reply_text("🎒 Твой инвентарь пуст.")
+        await update.message.reply_text(
+            "🎒 Твой инвентарь пуст.", reply_markup=main_markup
+        )
         return
 
     items_named = []
@@ -323,8 +359,30 @@ async def inventory_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = text[:max_len] + "... (и др.)"
 
     await update.message.reply_text(
-        f"🎒 **Инвентарь @{p.username}:**\n{text}", parse_mode="Markdown"
+        f"🎒 **Инвентарь @{p.username}:**\n{text}",
+        parse_mode="Markdown",
+        reply_markup=main_markup,
     )
+
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text
+    if text == "⚔️ Охота":
+        await hunt_command(update, context)
+    elif text == "📊 Профиль":
+        await stats_command(update, context)
+    elif text == "🚪 Врата":
+        await gates_command(update, context)
+    elif text == "🎒 Инвентарь":
+        await inventory_command(update, context)
+    elif text == "🏕️ Отдых":
+        await rest_command(update, context)
+    elif text == "✨ Магия (Хил/Щит)":
+        await update.message.reply_text(
+            "✨ Используй команды магии:\n• `/cast хил` — восстановить HP\n• `/cast щит` — создать щит\n• `/hunt cast шар` — огненный шар на охоте",
+            parse_mode="Markdown",
+            reply_markup=main_markup,
+        )
 
 
 async def post_init(application):
@@ -358,8 +416,11 @@ def main():
     application.add_handler(CommandHandler("upgrade", upgrade_command))
     application.add_handler(CommandHandler("rest", rest_command))
     application.add_handler(CommandHandler("inventory", inventory_command))
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
+    )
 
-    logger.info("🤖 Telegram Bot started with full chat command support...")
+    logger.info("🤖 Telegram Bot started with ReplyKeyboardMarkup static buttons...")
     application.run_polling()
 
 
