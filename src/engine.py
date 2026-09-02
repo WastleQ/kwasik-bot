@@ -167,7 +167,7 @@ class RPGEngine:
                 )
                 p_dmg = max(1, int(base_dmg * (1.5 if crit else 1.0)))
         else:
-            p_dmg = max(1, int(st["str"] * 3.0 + st["agi"] * 0.8))
+            p_dmg = max(1, int(st["str"] * 3.5 + st["agi"] * 0.8))
 
         rounds = math.ceil(mob_hp / p_dmg)
         total_player_dmg = 0
@@ -181,7 +181,7 @@ class RPGEngine:
 
             if random.random() > dodge_ch:
                 dmg = random.randint(dungeon["min_dmg"], dungeon["max_dmg"])
-                net_dmg = max(1, dmg - int(st["vit"] * 0.9))
+                net_dmg = max(1, dmg - int(st["vit"] * 1.2))
 
                 if p.shield > 0:
                     if net_dmg <= p.shield:
