@@ -90,7 +90,9 @@ class RPGEngine:
     def get_exp_required(self, lvl):
         base = lvl * 100
         tier = lvl // 100
-        return base * (2**tier)
+        if tier == 0:
+            return base
+        return int(base * (1.5 * tier))
 
     def check_level_up(self, p):
         up = False
@@ -208,7 +210,7 @@ class RPGEngine:
             )
 
         player_damage = min(mob_hp, total_player_dmg)
-        mob_exp = int(mob_hp * 0.2)
+        mob_exp = int(mob_hp * 0.3)
         p.exp += mob_exp
         p.gold += random.randint(30, 70) if is_boss else random.randint(10, 30)
 
