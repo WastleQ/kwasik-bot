@@ -179,7 +179,7 @@ class RPGEngine:
 
             if random.random() > dodge_ch:
                 dmg = random.randint(dungeon["min_dmg"], dungeon["max_dmg"])
-                net_dmg = max(1, dmg - int(st["vit"] * 0.7))
+                net_dmg = max(1, dmg - int(st["vit"] * 0.9))
 
                 if p.shield > 0:
                     if net_dmg <= p.shield:
