@@ -168,34 +168,46 @@ class RPGEngine:
             p_dmg = max(1, int(st["str"] * 3.0 + st["agi"] * 0.8))
 
         rounds = math.ceil(mob_hp / p_dmg)
-        hits = 1 if (is_magic and spell and spell.get("type") == "attack") else rounds
-        total_damage = 0
-        dodge_ch = (
-            0.0
-            if (is_magic and spell and spell.get("type") == "attack")
-            else min(0.3, st["agi"] * 0.005)
-        )
+        total_player_dmg = 0
+        survived_rounds = 0
+        died = False
+        dodge_ch = min(0.3, st["agi"] * 0.005)
 
-        for _ in range(hits):
+        for _ in range(rounds):
+            survived_rounds += 1
+            total_player_dmg += p_dmg
+
             if random.random() > dodge_ch:
                 dmg = random.randint(dungeon["min_dmg"], dungeon["max_dmg"])
-                total_damage += max(1, dmg - int(st["vit"] * 0.7))
+                net_dmg = max(1, dmg - int(st["vit"] * 0.7))
 
-        if p.shield > 0:
-            if total_damage <= p.shield:
-                p.shield -= total_damage
-                total_damage = 0
-            else:
-                total_damage -= p.shield
-                p.shield = 0
+                if p.shield > 0:
+                    if net_dmg <= p.shield:
+                        p.shield -= net_dmg
+                        net_dmg = 0
+                    else:
+                        net_dmg -= p.shield
+                        p.shield = 0
 
-        p.hp -= total_damage
-        if p.hp <= 0:
-            p.shield = 0
+                p.hp -= net_dmg
+                if p.hp <= 0:
+                    p.shield = 0
+                    p.hp = 0
+                    died = True
+                    break
+
+            if total_player_dmg >= mob_hp:
+                break
+
+        if died:
             self.handle_death(p)
-            return f"💀 @{p.username} погиб в бою с {mob_name}!", None
+            actual_dealt = min(mob_hp, total_player_dmg)
+            return (
+                f"💀 @{p.username} погиб в бою с {mob_name} (нанесено {actual_dealt} / {mob_hp} урона за {survived_rounds} раундов)!",
+                None,
+            )
 
-        player_damage = p_dmg * hits
+        player_damage = min(mob_hp, total_player_dmg)
         mob_exp = int(mob_hp * 0.2)
         p.exp += mob_exp
         p.gold += random.randint(30, 70) if is_boss else random.randint(10, 30)
