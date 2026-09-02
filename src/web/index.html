@@ -164,6 +164,20 @@
             font-size: 0.8rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
+        .up-btn {
+            background: #22c55e;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 4px;
+        }
+        .up-btn:active {
+            transform: scale(0.9);
+        }
     </style>
 </head>
 <body>
@@ -191,12 +205,12 @@
             </div>
 
             <div class="stats-grid">
-                <div class="stat-box">STR: <span id="st-str">10</span></div>
-                <div class="stat-box">AGI: <span id="st-agi">10</span></div>
-                <div class="stat-box">VIT: <span id="st-vit">10</span></div>
-                <div class="stat-box">INT: <span id="st-int">10</span></div>
-                <div class="stat-box">SEN: <span id="st-sen">10</span></div>
-                <div class="stat-box">AP: <span id="st-ap">0</span></div>
+                <div class="stat-box">STR: <span id="st-str">10</span> <button class="up-btn" onclick="upgrade('str')">+</button></div>
+                <div class="stat-box">AGI: <span id="st-agi">10</span> <button class="up-btn" onclick="upgrade('agi')">+</button></div>
+                <div class="stat-box">VIT: <span id="st-vit">10</span> <button class="up-btn" onclick="upgrade('vit')">+</button></div>
+                <div class="stat-box">INT: <span id="st-int">10</span> <button class="up-btn" onclick="upgrade('int')">+</button></div>
+                <div class="stat-box">SEN: <span id="st-sen">10</span> <button class="up-btn" onclick="upgrade('sen')">+</button></div>
+                <div class="stat-box" style="background: #1e3a8a;">AP: <span id="st-ap">0</span></div>
             </div>
         </div>
 
@@ -334,6 +348,25 @@
                 }
             } catch (e) {
                 log("Ошибка сети: " + e);
+            }
+        }
+
+        async function upgrade(stat) {
+            try {
+                const res = await fetch(`/api/player/${username}/upgrade`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ stat: stat, count: 1 })
+                });
+                const data = await res.json();
+                if (data.status === "error") {
+                    log("❌ " + data.message);
+                } else {
+                    log("✅ " + data.message);
+                    loadProfile();
+                }
+            } catch (e) {
+                log("Ошибка прокачки: " + e);
             }
         }
 

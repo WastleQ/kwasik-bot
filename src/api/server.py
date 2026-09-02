@@ -31,6 +31,11 @@ class ActionRequest(BaseModel, extra="allow"):
     spell_key: str = "шар"
 
 
+class UpgradeRequest(BaseModel):
+    stat: str
+    count: int = 1
+
+
 @app.get("/", response_class=HTMLResponse)
 async def read_index():
     index_path = os.path.join("src", "web", "index.html")
@@ -159,4 +164,41 @@ async def player_rest(username: str):
         "hp": p.hp,
         "mp": p.mp,
         "message": "Отдохнул и восстановил силы!",
+    }
+
+
+@app.post("/api/player/{username}/upgrade")
+async def player_upgrade(username: str, req: UpgradeRequest):
+    username = username.lower().replace("@", "")
+    p = await db.load(username)
+    if not p:
+        raise HTTPException(status_code=404, detail="Player not found")
+
+    if p.stat_points < req.count or req.count <= 0:
+        return {
+            "status": "error",
+            "message": f"Недостаточно AP. У тебя: {p.stat_points}",
+        }
+
+    mapping = {
+        "str": "str_stat",
+        "agi": "agi",
+        "vit": "vit",
+        "int": "int_stat",
+        "sen": "sen",
+    }
+    attr = mapping.get(req.stat.lower())
+    if not attr:
+        return {"status": "error", "message": "Неверная характеристика"}
+
+    setattr(p, attr, getattr(p, attr) + req.count)
+    p.stat_points -= req.count
+    engine.clamp_resources(p)
+    await db.save(p)
+
+    return {
+        "status": "success",
+        "message": f"Характеристика {req.stat.upper()} увеличена на {req.count}!",
+        "stat_points": p.stat_points,
+        "stats": engine.get_stats(p),
     }
