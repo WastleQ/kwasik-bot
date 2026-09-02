@@ -437,6 +437,14 @@
   * Создан мобильный веб-интерфейс в стиле *Solo Leveling* (`src/web/index.html`), поддерживающий интеграцию с Telegram Web App SDK (`window.Telegram.WebApp`).
   * Добавлен скрипт запуска `run_web.py` для старта сервера.
 
+---
+
+## 🤖 49. Создание Telegram-бота (`telegram_bot.py`) для Mini App `[02.09.2026]`
+* **Интеграция с Telegram Bot API:**
+  * Написан скрипт `telegram_bot.py` на базе `python-telegram-bot`.
+  * При команде `/start` бот приветствует игрока и предоставляет инлайн-кнопку **«🎮 Открыть Kwasik RPG»**, открывающую созданный Telegram Mini App.
+  * Токен бота сохранен в `.env`.
+
 
 
 
