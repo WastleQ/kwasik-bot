@@ -43,6 +43,21 @@ logger = logging.getLogger("TelegramBot")
 db = DBManager("solo_leveling.db")
 engine = RPGEngine()
 
+
+def _get_default_quest_loc(lvl: int) -> str:
+    if lvl < 10:
+        return "1"
+    elif lvl < 20:
+        return "2"
+    elif lvl < 30:
+        return "3"
+    elif lvl < 40:
+        return "4"
+    elif lvl < 50:
+        return "5"
+    else:
+        return "6"
+
 reply_keyboard = [
     ["⚔️ Охота", "📊 Профиль"],
     ["🚪 Врата", "🎒 Инвентарь"],
