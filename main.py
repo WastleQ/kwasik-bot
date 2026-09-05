@@ -45,6 +45,7 @@ class SoloLevelingBot(commands.Bot):
         self.raid_aoe_task = routines.routine(minutes=5)(self._raid_aoe_logic)
         self.regen_task = routines.routine(minutes=3)(self._passive_regen_logic)
         self.red_gate_task = routines.routine(minutes=45)(self._red_gate_spawn_logic)
+        self.action_poll_task = routines.routine(seconds=5)(self._poll_bot_actions_logic)
 
         self.load_extensions()
 
@@ -74,6 +75,36 @@ class SoloLevelingBot(commands.Bot):
         self.raid_aoe_task.start()
         self.regen_task.start()
         self.red_gate_task.start()
+        self.action_poll_task.start()
+
+    async def _poll_bot_actions_logic(self):
+        try:
+            actions = await self.db.get_pending_bot_actions()
+            for action in actions:
+                action_id = action["id"]
+                action_type = action["action_type"]
+                payload = action["payload"]
+
+                channel = self.get_channel(CHANNEL)
+                if action_type == "spawn_red_gate":
+                    await self._spawn_red_gate()
+                    if channel:
+                        await channel.send("🚨 [TUI] Красные Врата принудительно открыты администратором!")
+                elif action_type == "spawn_raid":
+                    boss_key = payload if payload in RAID_BOSSES else "igris"
+                    boss = RAID_BOSSES[boss_key]
+                    self.active_raid = {
+                        "id": boss_key,
+                        "hp": boss["hp"],
+                        "max_hp": boss["hp"],
+                        "parts": {},
+                    }
+                    if channel:
+                        await channel.send(f"⚠️ [TUI] КРАСНЫЕ ВРАТА: {boss['name']} призван через TUI! Пишите !рейд удар или !рейд каст [скилл]")
+
+                await self.db.update_bot_action_status(action_id, "completed")
+        except Exception as e:
+            logger.error(f"Error polling bot actions: {e}")
 
     @commands.command(name="врата_спавн")
     async def admin_spawn_red_gate(self, ctx):

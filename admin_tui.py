@@ -16,6 +16,7 @@ async def main():
         print("2. Найти / Редактировать игрока")
         print("3. Выдать предмет игроку")
         print("4. Забрать предмет у игрока")
+        print("5. Запуск событий (Красные врата / Игрис)")
         print("0. Выход")
 
         choice = input("\nВыберите пункт меню: ").strip()
@@ -166,6 +167,24 @@ async def main():
             await db.add_to_inventory(uname, item_id)  # wait, remove
             await db.remove_from_inventory(uname, item_id)
             print(f"✅ Предмет '{item_id}' удален у игрока '{uname}'.")
+
+        elif choice == "5":
+            while True:
+                print("\n=== УПРАВЛЕНИЕ СОБЫТИЯМИ ===")
+                print("1. Запустить Красные Врата (Red Gate)")
+                print("2. Запустить Рейд на Игриса (Igris Raid)")
+                print("b. Назад")
+                sub = input("Выберите событие: ").strip().lower()
+                if sub == "b":
+                    break
+                elif sub == "1":
+                    await db.add_bot_action("spawn_red_gate", "")
+                    print("✅ Событие 'Красные Врата' отправлено боту на запуск!")
+                elif sub == "2":
+                    await db.add_bot_action("spawn_raid", "igris")
+                    print("✅ Событие 'Рейд на Игриса' отправлено боту на запуск!")
+                else:
+                    print("⚠️ Неверный выбор.")
 
         elif choice == "0":
             print("Выход...")

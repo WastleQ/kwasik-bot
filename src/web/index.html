@@ -243,10 +243,30 @@
 
         <!-- Inventory -->
         <div class="card">
-            <div style="font-size: 0.9rem; margin-bottom: 6px; color: var(--text-muted);">Инвентарь:</div>
+            <div style="font-size: 0.9rem; margin-bottom: 6px; color: var(--text-muted);">Инвентарь (нажмите для действий):</div>
             <div id="inventory-list" class="inventory-list">
                 <span style="color: var(--text-muted); font-size: 0.85rem;">Пусто</span>
             </div>
+        </div>
+
+        <!-- Extra Features Cards -->
+        <div class="card">
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
+                <button class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px;" onclick="openShop()">🏪 Магазин</button>
+                <button class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px;" onclick="openCrafts()">⚒️ Крафт</button>
+                <button class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px;" onclick="openQuest()">📜 Квест</button>
+                <button class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px;" onclick="openTitles()">👑 Титулы</button>
+                <button class="btn btn-secondary" style="font-size: 0.85rem; padding: 8px;" onclick="openLeaderboard()">🏆 Топ</button>
+            </div>
+        </div>
+
+        <!-- Dynamic Modal Area -->
+        <div id="modal-card" class="card" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span id="modal-title" style="font-weight: bold; color: #60a5fa;">Меню</span>
+                <button class="btn-secondary" style="padding: 2px 8px; border-radius: 4px; cursor: pointer;" onclick="closeModal()">✕</button>
+            </div>
+            <div id="modal-content" style="max-height: 220px; overflow-y: auto; font-size: 0.9rem;"></div>
         </div>
     </div>
 
@@ -325,7 +345,9 @@
                 data.inventory.forEach(item => {
                     let tag = document.createElement("div");
                     tag.className = "item-tag";
+                    tag.style.cursor = "pointer";
                     tag.innerText = item;
+                    tag.onclick = () => showItemActionModal(item);
                     invDiv.appendChild(tag);
                 });
             }
@@ -396,6 +418,177 @@
         function log(msg) {
             let box = document.getElementById("log-box");
             box.innerText = msg + "\n" + box.innerText;
+        }
+
+        function closeModal() {
+            document.getElementById("modal-card").style.display = "none";
+        }
+
+        async function openShop() {
+            try {
+                const res = await fetch("/api/shop");
+                const shop = await res.json();
+                let html = "<b>Магазин предметов:</b><br><br>";
+                for (const [id, item] of Object.entries(shop)) {
+                    html += `<div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:center;">
+                        <span>${item.name} (${item.price}💰)</span>
+                        <button class="up-btn" style="padding:4px 8px;" onclick="buyItem('${id}')">Купить</button>
+                    </div>`;
+                }
+                document.getElementById("modal-title").innerText = "🏪 Магазин";
+                document.getElementById("modal-content").innerHTML = html;
+                document.getElementById("modal-card").style.display = "block";
+            } catch (e) {
+                log("Ошибка загрузки магазина");
+            }
+        }
+
+        async function buyItem(id) {
+            try {
+                const res = await fetch(`/api/player/${username}/buy`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ spell_key: id })
+                });
+                const data = await res.json();
+                log(data.message);
+                loadProfile();
+                closeModal();
+            } catch (e) { log("Ошибка покупки"); }
+        }
+
+        async function openCrafts() {
+            try {
+                const res = await fetch("/api/crafts");
+                const crafts = await res.json();
+                let html = "<b>Рецепты крафта:</b><br><br>";
+                for (const [key, r] of Object.entries(crafts)) {
+                    html += `<div style="margin-bottom:8px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px;">
+                        <b>${r.name}</b> (${r.desc})<br>
+                        <button class="up-btn" style="padding:4px 8px; margin-top:4px;" onclick="craftItem('${key}')">Скрафтить</button>
+                    </div>`;
+                }
+                document.getElementById("modal-title").innerText = "⚒️ Крафт";
+                document.getElementById("modal-content").innerHTML = html;
+                document.getElementById("modal-card").style.display = "block";
+            } catch (e) { log("Ошибка крафта"); }
+        }
+
+        async function craftItem(key) {
+            try {
+                const res = await fetch(`/api/player/${username}/craft`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ spell_key: key })
+                });
+                const data = await res.json();
+                log(data.message);
+                loadProfile();
+                closeModal();
+            } catch (e) { log("Ошибка крафта"); }
+        }
+
+        async function openQuest() {
+            try {
+                const res = await fetch(`/api/player/${username}/quest`);
+                const q = await res.json();
+                let html = `📜 <b>Ежедневный квест Системы:</b><br>`;
+                html += `Локация: ${q.loc_name}<br>`;
+                html += `Прогресс: ${q.progress} / ${q.target}<br><br>`;
+                if (!q.completed && q.progress >= q.target) {
+                    html += `<button class="btn" style="padding:8px;" onclick="claimQuest()">Забрать награду</button>`;
+                } else if (q.completed) {
+                    html += `<span style="color:var(--success);">✅ Квест выполнен на сегодня!</span>`;
+                } else {
+                    html += `<span style="color:var(--text-muted);">Выполняйте охоту во вратах нужного типа.</span>`;
+                }
+                document.getElementById("modal-title").innerText = "📜 Квест";
+                document.getElementById("modal-content").innerHTML = html;
+                document.getElementById("modal-card").style.display = "block";
+            } catch (e) { log("Ошибка квеста"); }
+        }
+
+        async function claimQuest() {
+            try {
+                const res = await fetch(`/api/player/${username}/claim`, { method: "POST" });
+                const data = await res.json();
+                log(data.message);
+                loadProfile();
+                closeModal();
+            } catch (e) { log("Ошибка получения награды"); }
+        }
+
+        async function openTitles() {
+            try {
+                const res = await fetch(`/api/player/${username}/titles`);
+                const d = await res.json();
+                let html = "<b>Титулы Охотника:</b><br><br>";
+                for (const [key, t] of Object.entries(d.titles)) {
+                    let active = d.current_title === key ? " (Активен)" : "";
+                    html += `<div style="display:flex; justify-content:space-between; margin-bottom:6px; align-items:center;">
+                        <span>${t.name}${active}</span>
+                        <button class="up-btn" style="padding:4px 8px;" onclick="setTitle('${key}')">Надеть</button>
+                    </div>`;
+                }
+                document.getElementById("modal-title").innerText = "👑 Титулы";
+                document.getElementById("modal-content").innerHTML = html;
+                document.getElementById("modal-card").style.display = "block";
+            } catch (e) { log("Ошибка титулов"); }
+        }
+
+        async function setTitle(key) {
+            try {
+                const res = await fetch(`/api/player/${username}/title`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ spell_key: key })
+                });
+                const data = await res.json();
+                log(data.message);
+                loadProfile();
+                closeModal();
+            } catch (e) { log("Ошибка смены титула"); }
+        }
+
+        async function openLeaderboard() {
+            try {
+                const res = await fetch("/api/leaderboard");
+                const top = await res.json();
+                let html = "<b>Топ Охотников:</b><br><br>";
+                top.forEach((pl, idx) => {
+                    html += `${idx+1}. @${pl.username} — Ур. ${pl.lvl} [${pl.rank}] (💰 ${pl.gold})<br>`;
+                });
+                document.getElementById("modal-title").innerText = "🏆 Топ";
+                document.getElementById("modal-content").innerHTML = html;
+                document.getElementById("modal-card").style.display = "block";
+            } catch (e) { log("Ошибка топа"); }
+        }
+
+        function showItemActionModal(itemId) {
+            let html = `<b>Предмет:</b> ${itemId}<br><br>`;
+            html += `<div style="display:flex; gap:6px;">
+                <button class="btn" style="padding:8px;" onclick="itemAction('${itemId}', 'equip')">Экипировать</button>
+                <button class="btn btn-secondary" style="padding:8px;" onclick="itemAction('${itemId}', 'drink')">Использовать</button>
+                <button class="btn btn-secondary" style="background:#ef4444; padding:8px;" onclick="itemAction('${itemId}', 'sell')">Продать</button>
+            </div>`;
+            document.getElementById("modal-title").innerText = "📦 Действие с предметом";
+            document.getElementById("modal-content").innerHTML = html;
+            document.getElementById("modal-card").style.display = "block";
+        }
+
+        async function itemAction(itemId, action) {
+            try {
+                let endpoint = action === 'equip' ? 'equip' : (action === 'drink' ? 'drink' : 'sell');
+                const res = await fetch(`/api/player/${username}/${endpoint}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ spell_key: itemId })
+                });
+                const data = await res.json();
+                log(data.message);
+                loadProfile();
+                closeModal();
+            } catch (e) { log("Ошибка действия с предметом"); }
         }
 
         loadProfile();

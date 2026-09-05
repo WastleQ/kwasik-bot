@@ -55,6 +55,9 @@ class DBManager:
                     "CREATE TABLE IF NOT EXISTS inventory (username TEXT, item_id TEXT)"
                 )
                 await conn.execute(
+                    "CREATE TABLE IF NOT EXISTS bot_actions (id INTEGER PRIMARY KEY AUTOINCREMENT, action_type TEXT, payload TEXT, status TEXT DEFAULT 'pending')"
+                )
+                await conn.execute(
                     "ALTER TABLE players ADD COLUMN IF NOT EXISTS title TEXT DEFAULT 'novice'"
                 )
                 await conn.execute(
@@ -86,6 +89,9 @@ class DBManager:
                      daily_quest_loc TEXT DEFAULT '1', daily_quest_target INT DEFAULT 3, daily_quest_progress INT DEFAULT 0, shield INT DEFAULT 0)""")
                 await conn.execute(
                     "CREATE TABLE IF NOT EXISTS inventory (username TEXT, item_id TEXT)"
+                )
+                await conn.execute(
+                    "CREATE TABLE IF NOT EXISTS bot_actions (id INTEGER PRIMARY KEY AUTOINCREMENT, action_type TEXT, payload TEXT, status TEXT DEFAULT 'pending')"
                 )
 
                 async with conn.execute("PRAGMA table_info(players)") as cursor:
@@ -273,3 +279,33 @@ class DBManager:
                 ) as cursor:
                     rows = await cursor.fetchall()
                     return [Player(**dict(r)) for r in rows]
+
+    async def add_bot_action(self, action_type: str, payload: str = ""):
+        if self.database_url:
+            async with self.pool.acquire() as conn:
+                await conn.execute("INSERT INTO bot_actions (action_type, payload, status) VALUES ($1, $2, 'pending')", action_type, payload)
+        else:
+            async with aiosqlite.connect(self.path) as conn:
+                await conn.execute("INSERT INTO bot_actions (action_type, payload, status) VALUES (?, ?, 'pending')", (action_type, payload))
+                await conn.commit()
+
+    async def get_pending_bot_actions(self):
+        if self.database_url:
+            async with self.pool.acquire() as conn:
+                rows = await conn.fetch("SELECT id, action_type, payload FROM bot_actions WHERE status = 'pending'")
+                return [dict(r) for r in rows]
+        else:
+            async with aiosqlite.connect(self.path) as conn:
+                conn.row_factory = aiosqlite.Row
+                async with conn.execute("SELECT id, action_type, payload FROM bot_actions WHERE status = 'pending'") as cursor:
+                    rows = await cursor.fetchall()
+                    return [dict(r) for r in rows]
+
+    async def update_bot_action_status(self, action_id: int, status: str):
+        if self.database_url:
+            async with self.pool.acquire() as conn:
+                await conn.execute("UPDATE bot_actions SET status = $1 WHERE id = $2", status, action_id)
+        else:
+            async with aiosqlite.connect(self.path) as conn:
+                await conn.execute("UPDATE bot_actions SET status = ? WHERE id = ?", (status, action_id))
+                await conn.commit()
