@@ -8,9 +8,9 @@ import time
 from twitchio.ext import commands, routines
 
 from src.config import ADMINS, CHANNEL, TWITCH_TOKEN
+from src.container import AppContainer
 from src.data import ITEMS, RAID_BOSSES
-from src.engine import RPGEngine
-from src.models import DBManager, Player
+from src.models import Player
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
@@ -19,7 +19,7 @@ logger = logging.getLogger("KwasikBot")
 
 
 class SoloLevelingBot(commands.Bot):
-    def __init__(self):
+    def __init__(self, container: AppContainer | None = None):
         self._loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._loop)
         super().__init__(
@@ -29,15 +29,18 @@ class SoloLevelingBot(commands.Bot):
             loop=self._loop,
         )
 
-        self.db = DBManager()
-        self.engine = RPGEngine()
-        self.active_duels = {}
-        self.active_raid = None
-        self.active_red_gate = None
-        self.active_pvp_matches = {}
-        self.user_active_pvp = {}
-        self.parties = {}
-        self.party_invites = {}
+        self.container = container or AppContainer()
+        self.db = self.container.db
+        self.engine = self.container.engine
+        self.parties = self.container.parties
+        self.party_invites = self.container.party_invites
+        self.rest_cooldowns = self.container.rest_cooldowns
+        self.active_duels = self.container.active_duels
+        self.active_raid = self.container.active_raid
+        self.active_red_gate = self.container.active_red_gate
+        self.active_pvp_matches = self.container.active_pvp_matches
+        self.user_active_pvp = self.container.user_active_pvp
+
         self.player_party = {}
         self.user_cooldowns = {}
         self._first_red_gate_check = True
@@ -48,6 +51,9 @@ class SoloLevelingBot(commands.Bot):
         self.action_poll_task = routines.routine(seconds=5)(self._poll_bot_actions_logic)
 
         self.load_extensions()
+
+    async def get_player(self, username: str) -> Player:
+        return await self.container.get_player(username)
 
     async def close(self):
         try:
@@ -194,16 +200,6 @@ class SoloLevelingBot(commands.Bot):
         ):
             return
         logger.warning(f"⚠️ Ошибка: {error}")
-
-    async def get_player(self, username: str):
-        username = username.lower().replace("@", "")
-        p = await self.db.load(username)
-        if not p:
-            p = Player(username=username)
-            await self.db.save(p)
-        else:
-            self.engine.clamp_resources(p)
-        return p
 
     @commands.command(name="админ_вещи")
     async def admin_give_all(self, ctx):

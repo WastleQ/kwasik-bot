@@ -58,3 +58,13 @@ def test_achievements_and_titles():
     # Unlocking same achievement again should return None
     ach_duplicate = engine.unlock_achievement(player, "first_hunt")
     assert ach_duplicate is None
+
+
+def test_daily_quest_bonus_ap_preservation():
+    engine = RPGEngine()
+    player = Player(username="test", lvl=1, str_stat=12, stat_points=3, bonus_stat_points=5)
+    engine.clamp_resources(player)
+    assert player.str_stat == 12
+    assert player.stat_points == 3
+    assert player.bonus_stat_points == 5
+

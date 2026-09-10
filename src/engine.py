@@ -59,7 +59,14 @@ class RPGEngine:
         p.mp = max(0, int(self.get_max_mp(p) * 0.1))
 
     def normalize_player_stats(self, p):
-        max_earned = max(0, (p.lvl - 1) * 5)
+        p.str_stat = max(10, p.str_stat)
+        p.agi = max(10, p.agi)
+        p.vit = max(10, p.vit)
+        p.int_stat = max(10, p.int_stat)
+        p.sen = max(10, p.sen)
+        p.stat_points = max(0, p.stat_points)
+
+        lvl_earned = max(0, (p.lvl - 1) * 5)
         current_spent = (
             (p.str_stat - 10)
             + (p.agi - 10)
@@ -68,17 +75,14 @@ class RPGEngine:
             + (p.sen - 10)
         )
         total_points = current_spent + p.stat_points
-        if total_points > max_earned:
-            p.str_stat = 10
-            p.agi = 10
-            p.vit = 10
-            p.int_stat = 10
-            p.sen = 10
-            p.stat_points = max_earned
-            p.hp = self.get_max_hp(p)
-            p.mp = self.get_max_mp(p)
-        elif total_points < max_earned:
-            p.stat_points += max_earned - total_points
+        bonus = getattr(p, "bonus_stat_points", 0)
+        allowed = lvl_earned + bonus
+
+        if total_points > allowed:
+            # Auto-adjust bonus_stat_points so earned AP from quests/events is never lost
+            p.bonus_stat_points = total_points - lvl_earned
+        elif total_points < allowed:
+            p.stat_points += allowed - total_points
 
     def clamp_resources(self, p):
         self.normalize_player_stats(p)
@@ -167,7 +171,7 @@ class RPGEngine:
                 )
                 p_dmg = max(1, int(base_dmg * (1.5 if crit else 1.0)))
         else:
-            p_dmg = max(1, int(st["str"] * 3.5 + st["agi"] * 0.8))
+            p_dmg = max(1, int(st["str"] * 3.5 + st["agi"] * 0.3))
 
         rounds = math.ceil(mob_hp / p_dmg)
         total_player_dmg = 0
@@ -181,7 +185,7 @@ class RPGEngine:
 
             if random.random() > dodge_ch:
                 dmg = random.randint(dungeon["min_dmg"], dungeon["max_dmg"])
-                net_dmg = max(1, dmg - int(st["vit"] * 1.2))
+                net_dmg = max(1, dmg - int(st["vit"] * 0.5))
 
                 if p.shield > 0:
                     if net_dmg <= p.shield:
