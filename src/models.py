@@ -203,6 +203,12 @@ class DBManager:
         async with self.async_engine.begin() as conn:
             if self.database_url:
                 await conn.run_sync(Base.metadata.create_all)
+                from sqlalchemy import text as _text
+                await conn.execute(_text("""
+                    UPDATE players 
+                    SET bonus_stat_points = GREATEST(0, ((str_stat - 10) + (agi - 10) + (vit - 10) + (int_stat - 10) + (sen - 10) + stat_points) - (lvl - 1) * 5)
+                    WHERE ((str_stat - 10) + (agi - 10) + (vit - 10) + (int_stat - 10) + (sen - 10) + stat_points) > (lvl - 1) * 5
+                """))
                 return
             # SQLite: проверяем старую схему inventory и мигрируем при необходимости
             from sqlalchemy import text as _text
@@ -225,6 +231,12 @@ class DBManager:
                 await conn.execute(_text("ALTER TABLE players ADD COLUMN linked_twitch TEXT"))
 
             await conn.run_sync(Base.metadata.create_all)
+
+            await conn.execute(_text("""
+                UPDATE players 
+                SET bonus_stat_points = MAX(0, ((str_stat - 10) + (agi - 10) + (vit - 10) + (int_stat - 10) + (sen - 10) + stat_points) - (lvl - 1) * 5)
+                WHERE ((str_stat - 10) + (agi - 10) + (vit - 10) + (int_stat - 10) + (sen - 10) + stat_points) > (lvl - 1) * 5
+            """))
 
     async def load(self, username: str) -> Player | None:
         username = username.lower().strip()
