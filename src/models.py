@@ -39,6 +39,7 @@ class PlayerModel(Base):
     daily_quest_progress = Column(Integer, default=0)
     shield = Column(Integer, default=0)
     bonus_stat_points = Column(Integer, default=0)
+    daily_quests_completed = Column(Integer, default=0)
     linked_twitch = Column(String, nullable=True, index=True)
 
 
@@ -93,6 +94,7 @@ class Player:
     daily_quest_progress: int = 0
     shield: int = 0
     bonus_stat_points: int = 0
+    daily_quests_completed: int = 0
     linked_twitch: str | None = None
 
     STAT_FIELDS: ClassVar[dict[str, str]] = {
@@ -149,6 +151,7 @@ class Player:
             daily_quest_progress=model.daily_quest_progress,
             shield=model.shield,
             bonus_stat_points=model.bonus_stat_points,
+            daily_quests_completed=model.daily_quests_completed,
             linked_twitch=model.linked_twitch,
         )
 
@@ -179,6 +182,7 @@ class Player:
             "daily_quest_progress": self.daily_quest_progress,
             "shield": self.shield,
             "bonus_stat_points": self.bonus_stat_points,
+            "daily_quests_completed": self.daily_quests_completed,
             "linked_twitch": self.linked_twitch,
         }
 
@@ -229,6 +233,8 @@ class DBManager:
             p_columns = [row[1] for row in p_result.fetchall()]
             if p_columns and "linked_twitch" not in p_columns:
                 await conn.execute(_text("ALTER TABLE players ADD COLUMN linked_twitch TEXT"))
+            if p_columns and "daily_quests_completed" not in p_columns:
+                await conn.execute(_text("ALTER TABLE players ADD COLUMN daily_quests_completed INT DEFAULT 0"))
 
             await conn.run_sync(Base.metadata.create_all)
 
@@ -289,6 +295,7 @@ class DBManager:
                 model.daily_quest_progress = player.daily_quest_progress
                 model.shield = player.shield
                 model.bonus_stat_points = player.bonus_stat_points
+                model.daily_quests_completed = player.daily_quests_completed
                 model.linked_twitch = player.linked_twitch
 
     async def get_inventory(self, username: str) -> list[str]:

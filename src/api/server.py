@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from src.container import AppContainer
 from src.data import (
     ACHIEVEMENTS,
     CRAFTING_RECIPES,
@@ -16,13 +17,13 @@ from src.data import (
     SPELLS,
     TITLES,
 )
-from src.engine import RPGEngine
-from src.models import DBManager, Player
+from src.models import Player
 
 app = FastAPI(title="Kwasik Bot RPG API")
 
-db = DBManager("solo_leveling.db")
-engine = RPGEngine()
+container = AppContainer("solo_leveling.db")
+db = container.db
+engine = container.engine
 
 # Ensure static/web directory exists
 os.makedirs("src/web", exist_ok=True)
@@ -31,7 +32,7 @@ app.mount("/static", StaticFiles(directory="src/web"), name="static")
 
 @app.on_event("startup")
 async def startup_event():
-    await db.init_db()
+    await container.init()
 
 
 class ActionRequest(BaseModel, extra="allow"):
@@ -85,6 +86,10 @@ async def get_player_profile(username: str):
         "rank": rank,
         "stats": stats,
         "inventory": inv,
+        "weapon_id": p.weapon_id,
+        "armor_id": p.armor_id,
+        "accessory_id": p.accessory_id,
+        "items": ITEMS,
         "dungeons": DUNGEONS,
         "spells": list(SPELLS.keys()),
     }
@@ -182,25 +187,11 @@ async def player_upgrade(username: str, req: UpgradeRequest):
     if not p:
         raise HTTPException(status_code=404, detail="Player not found")
 
-    if p.stat_points < req.count or req.count <= 0:
-        return {
-            "status": "error",
-            "message": f"Недостаточно AP. У тебя: {p.stat_points}",
-        }
+    try:
+        p.upgrade_stat(req.stat, req.count)
+    except ValueError as e:
+        return {"status": "error", "message": str(e)}
 
-    mapping = {
-        "str": "str_stat",
-        "agi": "agi",
-        "vit": "vit",
-        "int": "int_stat",
-        "sen": "sen",
-    }
-    attr = mapping.get(req.stat.lower())
-    if not attr:
-        return {"status": "error", "message": "Неверная характеристика"}
-
-    setattr(p, attr, getattr(p, attr) + req.count)
-    p.stat_points -= req.count
     engine.clamp_resources(p)
     await db.save(p)
 
@@ -397,6 +388,8 @@ async def claim_quest(username: str):
     if p.daily_quest_progress < p.daily_quest_target:
         return {"status": "error", "message": "Квест еще не выполнен"}
     p.stat_points += 3
+    p.bonus_stat_points += 3
+    p.daily_quests_completed += 1
     p.exp += 50
     gold_reward = p.lvl * 100
     p.gold += gold_reward

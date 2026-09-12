@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 import asyncio
 
-from src.engine import RPGEngine
-from src.models import DBManager
+from src.container import AppContainer
 
-db = DBManager()
-engine = RPGEngine()
+container = AppContainer()
+db = container.db
+engine = container.engine
 
 
 async def main():
-    await db.init_db()
+    await container.init()
     while True:
         print("\n=== KWASIK BOT ADMIN TUI ===")
         print("1. Список всех игроков")
@@ -58,6 +58,7 @@ async def main():
                     11,
                     f"HP: {p.hp}/{engine.get_max_hp(p)}, MP: {p.mp}/{engine.get_max_mp(p)}",
                 )
+                print(12, f"Выполненных ежедневных квестов: {getattr(p, 'daily_quests_completed', 0)}")
                 print("inv", f"Инвентарь: {await db.get_inventory(p.username)}")
                 print("b", "Назад в главное меню")
 

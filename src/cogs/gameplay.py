@@ -74,6 +74,7 @@ class GameplayCog(commands.Cog):
 
         p.stat_points += 3
         p.bonus_stat_points += 3
+        p.daily_quests_completed += 1
         p.exp += 50
         gold_reward = p.lvl * 100
         p.gold += gold_reward
