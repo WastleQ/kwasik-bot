@@ -309,5 +309,5 @@ class GameplayCog(commands.Cog):
         await self.bot.db.save(tg_player)
 
         await ctx.send(
-            f"✅ @{twitch_username} успешно синхронизирован с аккаунтом Telegram (@{tg_username})! Теперь ваши статы, золото и инвентарь общие."
+            "✅ Аккаунт успешно синхронизирован с Telegram! Теперь ваши статы, золото и инвентарь общие."
         )
