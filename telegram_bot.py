@@ -7,12 +7,14 @@ from dotenv import load_dotenv
 from telegram import (
     BotCommand,
     InlineKeyboardButton,
+    InlineKeyboardMarkup,
     ReplyKeyboardMarkup,
     Update,
     WebAppInfo,
 )
 from telegram.ext import (
     ApplicationBuilder,
+    CallbackQueryHandler,
     CommandHandler,
     ContextTypes,
     MessageHandler,
@@ -25,6 +27,7 @@ from src.data import (
     CRAFTING_RECIPES,
     DUNGEONS,
     ITEMS,
+    RAID_BOSSES,
     SPELLS,
     TITLES,
 )
@@ -247,7 +250,11 @@ async def hunt_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 msg += " ✨ Квест выполнен! Введите /claim чтобы забрать бонус!"
 
     await db.save(p)
-    await update.message.reply_text(msg, reply_markup=main_markup)
+    inline_hunt_markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("⚔️ Снова в бой", callback_data="hunt"), InlineKeyboardButton("🏕️ Отдых", callback_data="rest")],
+        [InlineKeyboardButton("🚪 Врата", callback_data="gates"), InlineKeyboardButton("🎒 Инвентарь", callback_data="inventory")]
+    ])
+    await update.message.reply_text(msg, reply_markup=inline_hunt_markup)
 
 
 async def cast_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -982,6 +989,127 @@ async def transfer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Использование: `/transfer gold` или `/transfer item`", parse_mode="Markdown", reply_markup=main_markup)
 
 
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = query.data
+    context.args = []
+    if data == "hunt":
+        await hunt_command(update, context)
+    elif data == "rest":
+        await rest_command(update, context)
+    elif data == "inventory":
+        await inventory_command(update, context)
+    elif data == "gates":
+        await gates_command(update, context)
+    elif data == "shop":
+        await shop_command(update, context)
+    elif data == "quest":
+        await quest_command(update, context)
+
+
+async def raid_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args or []
+    action = args[0].lower() if args else ""
+    arg2 = args[1].lower() if len(args) > 1 else "igris"
+    p = await get_telegram_player(update)
+
+    if action == "запустить":
+        boss = RAID_BOSSES.get(arg2, RAID_BOSSES["igris"])
+        container.active_raid = {
+            "id": arg2,
+            "hp": boss["hp"],
+            "max_hp": boss["hp"],
+            "parts": {},
+        }
+        await update.message.reply_text(
+            f"⚠️ КРАСНЫЕ ВРАТА: {boss['name']} призван! Используйте `/raid attack` или `/raid cast <скилл>`",
+            parse_mode="Markdown",
+            reply_markup=main_markup,
+        )
+        return
+
+    if action in ["удар", "attack"]:
+        if not container.active_raid:
+            await update.message.reply_text("❌ Нет активного рейда.", reply_markup=main_markup)
+            return
+        raid = container.active_raid
+        dmg, _ = engine.calculate_raid_damage(p, len(raid["parts"]) >= 5, False, None)
+        raid["hp"] -= dmg
+        raid["parts"][p.username] = raid["parts"].get(p.username, 0) + dmg
+        p.hp -= engine.raid_boss_retaliation(p, raid["hp"] / raid["max_hp"])
+        
+        if p.hp <= 0:
+            engine.handle_death(p)
+            raid["parts"].pop(p.username, None)
+            await db.save(p)
+            await update.message.reply_text(f"💀 @{p.username} пал в рейде!", reply_markup=main_markup)
+            return
+
+        await db.save(p)
+        if raid["hp"] <= 0:
+            boss_data = RAID_BOSSES.get(raid["id"], {"name": "Босс"})
+            container.active_raid = None
+            await update.message.reply_text(f"🎊 {boss_data['name']} ПОВЕРЖЕН!", reply_markup=main_markup)
+        else:
+            await update.message.reply_text(f"⚔️ @{p.username} нанес {dmg}! Босс HP: {max(0, raid['hp'])}/{raid['max_hp']}", reply_markup=main_markup)
+        return
+
+    if container.active_raid:
+        raid = container.active_raid
+        boss = RAID_BOSSES.get(raid["id"], {"name": "Рейдовый Босс"})
+        await update.message.reply_text(
+            f"⚠️ Активный рейд: **{boss['name']}**\n❤️ HP: {max(0, raid['hp'])}/{raid['max_hp']}\n👥 Участников: {len(raid['parts'])}\n\nКоманды: `/raid attack` или `/raid cast <скилл>`",
+            parse_mode="Markdown",
+            reply_markup=main_markup,
+        )
+    else:
+        await update.message.reply_text("❌ Нет активного рейда. Ожидайте призыва администратора.", reply_markup=main_markup)
+
+
+async def party_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args or []
+    action = args[0].lower() if args else ""
+    p = await get_telegram_player(update)
+
+    if action == "создать" or action == "create":
+        if container.player_party.get(p.username):
+            await update.message.reply_text("❌ Вы уже состоите в группе.", reply_markup=main_markup)
+            return
+        container.parties[p.username] = [p.username]
+        container.player_party[p.username] = p.username
+        await update.message.reply_text(f"🎉 @{p.username} создал группу!", reply_markup=main_markup)
+        return
+
+    if action == "покинуть" or action == "leave":
+        leader = container.player_party.get(p.username)
+        if not leader:
+            await update.message.reply_text("❌ Вы не состоите в группе.", reply_markup=main_markup)
+            return
+        if leader in container.parties and p.username in container.parties[leader]:
+            container.parties[leader].remove(p.username)
+            if not container.parties[leader] or leader == p.username:
+                container.parties.pop(leader, None)
+        container.player_party.pop(p.username, None)
+        await update.message.reply_text("🚪 Вы покинули группу.", reply_markup=main_markup)
+        return
+
+    leader = container.player_party.get(p.username)
+    if not leader or leader not in container.parties:
+        await update.message.reply_text(
+            "👥 Вы не в группе.\nКоманды:\n• `/party create` — создать пати\n• `/party leave` — покинуть пати",
+            parse_mode="Markdown",
+            reply_markup=main_markup,
+        )
+    else:
+        members = container.parties[leader]
+        await update.message.reply_text(
+            f"👥 **Группа (Лидер: @{leader}):**\nУчастники: " + ", ".join([f"@{m}" for m in members]),
+            parse_mode="Markdown",
+            reply_markup=main_markup,
+        )
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
     context.args = []
@@ -1035,6 +1163,8 @@ async def post_init(application):
         BotCommand("transfer", "🤝 Передать золото/предмет"),
         BotCommand("rest", "🏕️ Отдых и восстановление HP/MP"),
         BotCommand("inventory", "🎒 Инвентарь"),
+        BotCommand("raid", "⚠️ Рейдовый босс"),
+        BotCommand("party", "👥 Группа / Пати"),
         BotCommand("sync", "🔗 Синхронизация с Twitch"),
     ]
     await application.bot.set_my_commands(commands)
@@ -1073,6 +1203,9 @@ def main():
     application.add_handler(CommandHandler("spells", spells_command))
     application.add_handler(CommandHandler("drink", drink_command))
     application.add_handler(CommandHandler("transfer", transfer_command))
+    application.add_handler(CommandHandler("raid", raid_command))
+    application.add_handler(CommandHandler("party", party_command))
+    application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(CommandHandler("rest", rest_command))
     application.add_handler(CommandHandler("inventory", inventory_command))
     application.add_handler(CommandHandler("sync", sync_command))

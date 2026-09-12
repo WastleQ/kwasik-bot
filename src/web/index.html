@@ -205,11 +205,11 @@
             </div>
 
             <div class="stats-grid">
-                <div class="stat-box">STR: <span id="st-str">10</span> <button class="up-btn" onclick="upgrade('str')">+</button></div>
-                <div class="stat-box">AGI: <span id="st-agi">10</span> <button class="up-btn" onclick="upgrade('agi')">+</button></div>
-                <div class="stat-box">VIT: <span id="st-vit">10</span> <button class="up-btn" onclick="upgrade('vit')">+</button></div>
-                <div class="stat-box">INT: <span id="st-int">10</span> <button class="up-btn" onclick="upgrade('int')">+</button></div>
-                <div class="stat-box">SEN: <span id="st-sen">10</span> <button class="up-btn" onclick="upgrade('sen')">+</button></div>
+                <div class="stat-box">STR: <span id="st-str">10</span><div><button class="up-btn" onclick="upgrade('str', 1)">+1</button><button class="up-btn" onclick="upgrade('str', 5)">+5</button></div></div>
+                <div class="stat-box">AGI: <span id="st-agi">10</span><div><button class="up-btn" onclick="upgrade('agi', 1)">+1</button><button class="up-btn" onclick="upgrade('agi', 5)">+5</button></div></div>
+                <div class="stat-box">VIT: <span id="st-vit">10</span><div><button class="up-btn" onclick="upgrade('vit', 1)">+1</button><button class="up-btn" onclick="upgrade('vit', 5)">+5</button></div></div>
+                <div class="stat-box">INT: <span id="st-int">10</span><div><button class="up-btn" onclick="upgrade('int', 1)">+1</button><button class="up-btn" onclick="upgrade('int', 5)">+5</button></div></div>
+                <div class="stat-box">SEN: <span id="st-sen">10</span><div><button class="up-btn" onclick="upgrade('sen', 1)">+1</button><button class="up-btn" onclick="upgrade('sen', 5)">+5</button></div></div>
                 <div class="stat-box" style="background: #1e3a8a;">AP: <span id="st-ap">0</span></div>
             </div>
         </div>
@@ -249,6 +249,28 @@
             </div>
         </div>
 
+        <!-- Equipped Gear -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.9rem; color: var(--text-muted);">Экипировка:</span>
+                <button class="up-btn" style="background: var(--accent); padding: 4px 10px; font-size: 0.8rem;" onclick="openEquipmentModal()">⚔️ Надеть</button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 6px 10px; border-radius: 6px;">
+                    <span>⚔️ Оружие: <b id="eq-weapon" style="color: #60a5fa;">Нет</b></span>
+                    <button class="up-btn" style="background: var(--danger); padding: 4px 8px;" onclick="unequip('weapon')">Снять</button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 6px 10px; border-radius: 6px;">
+                    <span>🛡️ Броня: <b id="eq-armor" style="color: #60a5fa;">Нет</b></span>
+                    <button class="up-btn" style="background: var(--danger); padding: 4px 8px;" onclick="unequip('armor')">Снять</button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 6px 10px; border-radius: 6px;">
+                    <span>💍 Аксессуар: <b id="eq-accessory" style="color: #60a5fa;">Нет</b></span>
+                    <button class="up-btn" style="background: var(--danger); padding: 4px 8px;" onclick="unequip('accessory')">Снять</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Extra Features Cards -->
         <div class="card">
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;">
@@ -274,6 +296,20 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
+        function haptic(type = "light") {
+            if (tg && tg.HapticFeedback) {
+                if (type === "impact") {
+                    tg.HapticFeedback.impactOccurred("medium");
+                } else if (type === "notification") {
+                    tg.HapticFeedback.notificationOccurred("success");
+                } else {
+                    tg.HapticFeedback.selectionChanged();
+                }
+            }
+        }
+
+        let globalData = null;
+
         // Get username from Telegram user or fallback to query param or default
         let username = "wastle_";
         if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
@@ -295,6 +331,7 @@
         }
 
         function updateUI(data) {
+            globalData = data;
             document.getElementById("username").innerText = `@${data.username}`;
             document.getElementById("rank").innerText = data.rank;
             document.getElementById("lvl").innerText = `Уровень: ${data.lvl}`;
@@ -343,17 +380,24 @@
                 invDiv.innerHTML = '<span style="color: var(--text-muted); font-size: 0.85rem;">Пусто</span>';
             } else {
                 data.inventory.forEach(item => {
+                    let itemName = (data.items && data.items[item]) ? data.items[item].name : item;
                     let tag = document.createElement("div");
                     tag.className = "item-tag";
                     tag.style.cursor = "pointer";
-                    tag.innerText = item;
+                    tag.innerText = itemName;
                     tag.onclick = () => showItemActionModal(item);
                     invDiv.appendChild(tag);
                 });
             }
+
+            // Equipped Gear
+            document.getElementById("eq-weapon").innerText = (data.weapon_id && data.items && data.items[data.weapon_id]) ? data.items[data.weapon_id].name : (data.weapon_id || "Нет");
+            document.getElementById("eq-armor").innerText = (data.armor_id && data.items && data.items[data.armor_id]) ? data.items[data.armor_id].name : (data.armor_id || "Нет");
+            document.getElementById("eq-accessory").innerText = (data.accessory_id && data.items && data.items[data.accessory_id]) ? data.items[data.accessory_id].name : (data.accessory_id || "Нет");
         }
 
         async function hunt(action, spellKey) {
+            haptic('impact');
             log(`⚔️ Атака...`);
             try {
                 const res = await fetch(`/api/player/${username}/hunt`, {
@@ -373,12 +417,13 @@
             }
         }
 
-        async function upgrade(stat) {
+        async function upgrade(stat, count) {
+            haptic('impact');
             try {
                 const res = await fetch(`/api/player/${username}/upgrade`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ stat: stat, count: 1 })
+                    body: JSON.stringify({ stat: stat, count: count })
                 });
                 const data = await res.json();
                 if (data.status === "error") {
@@ -389,6 +434,25 @@
                 }
             } catch (e) {
                 log("Ошибка прокачки: " + e);
+            }
+        }
+
+        async function unequip(slot) {
+            try {
+                const res = await fetch(`/api/player/${username}/unequip`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ spell_key: slot })
+                });
+                const data = await res.json();
+                if (data.status === "error") {
+                    log("❌ " + data.message);
+                } else {
+                    log("✅ " + data.message);
+                    loadProfile();
+                }
+            } catch (e) {
+                log("Ошибка снятия экипировки: " + e);
             }
         }
 
@@ -564,13 +628,48 @@
             } catch (e) { log("Ошибка топа"); }
         }
 
+        function openEquipmentModal() {
+            if (!globalData) return;
+            let html = "<b>Экипировка снаряжения из инвентаря:</b><br><br>";
+            let equippable = globalData.inventory.filter(itemId => {
+                let item = globalData.items && globalData.items[itemId];
+                return item && (item.type === "weapon" || item.type === "armor");
+            });
+
+            if (equippable.length === 0) {
+                html += '<span style="color: var(--text-muted);">В инвентаре нет оружия или брони для экипировки.</span>';
+            } else {
+                equippable.forEach(itemId => {
+                    let item = globalData.items[itemId];
+                    html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; background:#0f172a; padding:8px; border-radius:6px;">
+                        <div>
+                            <b>${item.name}</b> <span style="font-size:0.75rem; color:var(--text-muted);">[${item.slot || item.type}]</span>
+                        </div>
+                        <button class="up-btn" style="padding:6px 12px; background:var(--success); font-weight:bold;" onclick="itemAction('${itemId}', 'equip')">Надеть</button>
+                    </div>`;
+                });
+            }
+            document.getElementById("modal-title").innerText = "⚔️ Меню экипировки";
+            document.getElementById("modal-content").innerHTML = html;
+            document.getElementById("modal-card").style.display = "block";
+        }
+
         function showItemActionModal(itemId) {
-            let html = `<b>Предмет:</b> ${itemId}<br><br>`;
-            html += `<div style="display:flex; gap:6px;">
-                <button class="btn" style="padding:8px;" onclick="itemAction('${itemId}', 'equip')">Экипировать</button>
-                <button class="btn btn-secondary" style="padding:8px;" onclick="itemAction('${itemId}', 'drink')">Использовать</button>
-                <button class="btn btn-secondary" style="background:#ef4444; padding:8px;" onclick="itemAction('${itemId}', 'sell')">Продать</button>
-            </div>`;
+            let itemName = (globalData && globalData.items && globalData.items[itemId]) ? globalData.items[itemId].name : itemId;
+            let item = (globalData && globalData.items) ? globalData.items[itemId] : null;
+            let isEquippable = item && (item.type === "weapon" || item.type === "armor");
+            let isUsable = item && item.type === "use";
+
+            let html = `<b>Предмет:</b> ${itemName}<br><br>`;
+            html += `<div style="display:flex; gap:6px; flex-wrap:wrap;">`;
+            if (isEquippable) {
+                html += `<button class="btn" style="padding:8px;" onclick="itemAction('${itemId}', 'equip')">Экипировать</button>`;
+            }
+            if (isUsable) {
+                html += `<button class="btn btn-secondary" style="padding:8px;" onclick="itemAction('${itemId}', 'drink')">Использовать</button>`;
+            }
+            html += `<button class="btn btn-secondary" style="background:#ef4444; padding:8px;" onclick="itemAction('${itemId}', 'sell')">Продать</button>`;
+            html += `</div>`;
             document.getElementById("modal-title").innerText = "📦 Действие с предметом";
             document.getElementById("modal-content").innerHTML = html;
             document.getElementById("modal-card").style.display = "block";
