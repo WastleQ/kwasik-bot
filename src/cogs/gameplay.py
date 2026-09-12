@@ -73,6 +73,7 @@ class GameplayCog(commands.Cog):
             return
 
         p.stat_points += 3
+        p.bonus_stat_points += 3
         p.exp += 50
         gold_reward = p.lvl * 100
         p.gold += gold_reward
@@ -263,41 +264,50 @@ class GameplayCog(commands.Cog):
     @commands.command(name="кач")
     async def cmd_upgrade(self, ctx, stat: str = "", count: int = 1):
         p = await self.bot.get_player(ctx.author.name)
-        if p.stat_points < count or count <= 0:
-            await ctx.send(f"❌ Недостаточно AP. У тебя: {p.stat_points}")
+        if count <= 0:
+            await ctx.send("❌ Количество должно быть положительным.")
+            return
+        try:
+            field = p.upgrade_stat(stat, count)
+        except ValueError as e:
+            if "Unknown stat" in str(e):
+                await ctx.send(
+                    "❓ Выбери: сила, ловкость, живучесть, инт, восприятие"
+                )
+                return
+            await ctx.send(f"❌ {e}")
             return
 
-        m = {
-            "сила": "str_stat",
-            "str": "str_stat",
-            "силу": "str_stat",
-            "ловкость": "agi",
-            "agi": "agi",
-            "ловоксть": "agi",
-            "ловку": "agi",
-            "живучесть": "vit",
-            "vit": "vit",
-            "хп": "vit",
-            "живка": "vit",
-            "инт": "int_stat",
-            "int": "int_stat",
-            "интеллект": "int_stat",
-            "ману": "int_stat",
-            "восприятие": "sen",
-            "sen": "sen",
-            "сен": "sen",
-            "сенсор": "sen",
-        }
-        attr = m.get(stat.lower())
-        if not attr:
-            await ctx.send("❓ Выбери: сила, ловкость, живучесть, инт, восприятие")
-            return
-
-        setattr(p, attr, getattr(p, attr) + count)
-        p.stat_points -= count
-        if attr in ["vit", "int_stat"]:
+        if field in ("vit", "int_stat"):
             p.hp = self.bot.engine.get_max_hp(p)
             p.mp = self.bot.engine.get_max_mp(p)
 
         await self.bot.db.save(p)
-        await ctx.send(f"✅ @{p.username}, характеристика {stat} увеличена на {count}!")
+        await ctx.send(
+            f"✅ @{p.username}, характеристика {stat} увеличена на {count}!"
+        )
+
+    @commands.command(name="sync")
+    async def cmd_sync(self, ctx, code: str = ""):
+        code = code.upper().strip()
+        if not code:
+            await ctx.send(f"❌ @{ctx.author.name}, укажите код синхронизации: `!sync <код>`")
+            return
+
+        tg_username = await self.bot.db.verify_sync_code(code)
+        if not tg_username:
+            await ctx.send(f"❌ @{ctx.author.name}, неверный или просроченный код синхронизации.")
+            return
+
+        twitch_username = ctx.author.name.lower().strip()
+        tg_player = await self.bot.db.load(tg_username)
+        if not tg_player:
+            await ctx.send(f"❌ Ошибка: профиль Telegram '{tg_username}' не найден.")
+            return
+
+        tg_player.linked_twitch = twitch_username
+        await self.bot.db.save(tg_player)
+
+        await ctx.send(
+            f"✅ @{twitch_username} успешно синхронизирован с аккаунтом Telegram (@{tg_username})! Теперь ваши статы, золото и инвентарь общие."
+        )

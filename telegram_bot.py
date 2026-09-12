@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from telegram import (
     BotCommand,
     InlineKeyboardButton,
-    InlineKeyboardMarkup,
     ReplyKeyboardMarkup,
     Update,
     WebAppInfo,
@@ -20,6 +19,7 @@ from telegram.ext import (
     filters,
 )
 
+from src.container import AppContainer
 from src.data import (
     ACHIEVEMENTS,
     CRAFTING_RECIPES,
@@ -28,8 +28,7 @@ from src.data import (
     SPELLS,
     TITLES,
 )
-from src.engine import RPGEngine
-from src.models import DBManager, Player
+from src.models import Player
 
 load_dotenv()
 TOKEN = os.getenv("TG_BOT_TOKEN", "8610234867:AAEONuZCm6arZ4mImXmj_SkKH7swo0i2P10")
@@ -40,8 +39,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("TelegramBot")
 
-db = DBManager("solo_leveling.db")
-engine = RPGEngine()
+container = AppContainer("solo_leveling.db")
+db = container.db
+engine = container.engine
 
 
 def _get_default_quest_loc(lvl: int) -> str:
@@ -70,13 +70,7 @@ main_markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True)
 async def get_telegram_player(update: Update) -> Player:
     user = update.effective_user
     username = (user.username or user.first_name or "hunter").lower().replace("@", "")
-    p = await db.load(username)
-    if not p:
-        p = Player(username=username)
-        await db.save(p)
-    else:
-        engine.clamp_resources(p)
-    return p
+    return await container.get_player(username)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -325,40 +319,24 @@ async def upgrade_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     count = int(args[1]) if len(args) > 1 and args[1].isdigit() else 1
 
     p = await get_telegram_player(update)
-    if p.stat_points < count or count <= 0:
+    if count <= 0:
         await update.message.reply_text(
-            f"❌ Недостаточно AP. У тебя: {p.stat_points}", reply_markup=main_markup
+            "❌ Количество должно быть положительным.", reply_markup=main_markup
         )
         return
 
-    mapping = {
-        "сила": "str_stat",
-        "str": "str_stat",
-        "силу": "str_stat",
-        "ловкость": "agi",
-        "agi": "agi",
-        "ловку": "agi",
-        "живучесть": "vit",
-        "vit": "vit",
-        "хп": "vit",
-        "живка": "vit",
-        "инт": "int_stat",
-        "int": "int_stat",
-        "интеллект": "int_stat",
-        "восприятие": "sen",
-        "sen": "sen",
-        "сен": "sen",
-    }
-    attr = mapping.get(stat)
-    if not attr:
-        await update.message.reply_text(
-            "❓ Выбери: сила (str), ловкость (agi), живучесть (vit), инт (int), восприятие (sen)",
-            reply_markup=main_markup,
-        )
+    try:
+        p.upgrade_stat(stat, count)
+    except ValueError as e:
+        if "Unknown stat" in str(e):
+            await update.message.reply_text(
+                "❓ Выбери: сила (str), ловкость (agi), живучесть (vit), инт (int), восприятие (sen)",
+                reply_markup=main_markup,
+            )
+            return
+        await update.message.reply_text(f"❌ {e}", reply_markup=main_markup)
         return
 
-    setattr(p, attr, getattr(p, attr) + count)
-    p.stat_points -= count
     engine.clamp_resources(p)
     await db.save(p)
 
@@ -669,8 +647,7 @@ async def sell_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     sell_price = unit_price * sell_count
     p.gold += sell_price
 
-    for _ in range(sell_count):
-        await db.remove_from_inventory(p.username, tid)
+    await db.remove_from_inventory(p.username, tid, count=sell_count)
 
     remaining_inv = await db.get_inventory(p.username)
     if tid not in remaining_inv:
@@ -734,6 +711,7 @@ async def claim_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     p.stat_points += 3
+    p.bonus_stat_points += 3
     p.exp += 50
     gold_reward = p.lvl * 100
     p.gold += gold_reward
@@ -747,6 +725,26 @@ async def claim_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await db.save(p)
     await update.message.reply_text(
         f"🎁 Квест Системы выполнен! Награда: +3 AP, +50 EXP, {gold_reward}💰, полное восстановление сил!{lvl_up_msg}",
+        reply_markup=main_markup,
+    )
+
+
+async def sync_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    p = await get_telegram_player(update)
+    import random
+    import string
+    import time
+
+    now = time.time()
+    code = "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    await db.create_sync_code(code, p.username, now + 300)
+
+    await update.message.reply_text(
+        f"🔗 **Синхронизация с Twitch**\n\n"
+        f"Ваш одноразовый код: `{code}`\n"
+        f"⏳ Действует **5 минут**.\n\n"
+        f"Напишите в чате Twitch: `!sync {code}`, чтобы связать аккаунты.",
+        parse_mode="Markdown",
         reply_markup=main_markup,
     )
 
@@ -1036,6 +1034,7 @@ async def post_init(application):
         BotCommand("transfer", "🤝 Передать золото/предмет"),
         BotCommand("rest", "🏕️ Отдых и восстановление HP/MP"),
         BotCommand("inventory", "🎒 Инвентарь"),
+        BotCommand("sync", "🔗 Синхронизация с Twitch"),
     ]
     await application.bot.set_my_commands(commands)
 
@@ -1075,6 +1074,7 @@ def main():
     application.add_handler(CommandHandler("transfer", transfer_command))
     application.add_handler(CommandHandler("rest", rest_command))
     application.add_handler(CommandHandler("inventory", inventory_command))
+    application.add_handler(CommandHandler("sync", sync_command))
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
     )
