@@ -359,9 +359,9 @@ class DBManager:
         now = time.time()
         async with self.session_maker() as session:
             async with session.begin():
-                await session.execute(delete(SyncCodeModel).where(SyncCodeModel.expires_at < now))
+                await session.execute(delete(SyncCodeModel).where((SyncCodeModel.expires_at < now) | (SyncCodeModel.code == code)))
                 sc = SyncCodeModel(code=code, telegram_username=telegram_username, expires_at=expires_at)
-                session.merge(sc)
+                session.add(sc)
                 await session.flush()
 
     async def verify_sync_code(self, code: str) -> str | None:
